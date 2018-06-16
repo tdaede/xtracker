@@ -6,7 +6,7 @@ OBJCOPY := human68k-objcopy
 CFLAGS := -std=c99 -O1 -fomit-frame-pointer -Iinc -Wall -Werror -I$(HUMAN68K)/human68k/include
 LDFLAGS := -Wl,-q,-Map=$(OUT_EXEC).map -L$(HUMAN68K)/human68k/lib
 
-SOURCES := $(wildcard src/*.c)
+SOURCES := $(wildcard src/*.c) $(wildcard src/*/*.c)
 OBJECTS := $(SOURCES:.c=.o)
 
 

@@ -2,7 +2,7 @@
 
 // TODO: Page 224 of Inside has a good example of the raster copy
 
-X68000 CTT Controller Helper Functions (crtc)
+X68000 CRT Controller Helper Functions (crtc)
 c. Michael Moffitt 2017
 
 Provides some helper functions for configuring the CRT controller. Most writes
@@ -41,7 +41,7 @@ void crtc_set_hsync_end(uint16_t v);
 // R02: H Display start
 void crtc_set_hdisp_start(uint16_t v);
 
-// R03: H Display start
+// R03: H Display end
 void crtc_set_hdisp_end(uint16_t v);
 
 // R04: Total vertical period
@@ -53,7 +53,7 @@ void crtc_set_vsync_end(uint16_t v);
 // R06: V Display start
 void crtc_set_vdisp_start(uint16_t v);
 
-// R07: V Display start
+// R07: V Display end
 void crtc_set_vdisp_end(uint16_t v);
 
 // R08 - R09: Misc ===========================================================

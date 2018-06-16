@@ -48,7 +48,7 @@ In 16x16 tile mode (hres on) tiles are "as you expect".
 16 -> 17 -> 18 -> 19 -> 20 ...
 
 In 8x8 tile mode (hres off) tiles are in a zig-zag order. They still follow
-addressing rules of the 16x16 mode in a sense. 
+addressing rules of the 16x16 mode in a sense.
 8x8 tiles are indexed within PCG memory like so:
 
 00  02  03  05  08
@@ -77,8 +77,8 @@ addressing rules of the 16x16 mode in a sense.
 #define PCG_MODE       0xEB0810
 
 // Attributes to specify sprite and backdrop tiles
-#define PCG_ATTR(y,x,c,p) (((y&1)<<15) | ((x&1)<<14) |\
-                          ((c&0xF)<<8) | ((p&0xFF)))
+#define PCG_ATTR(_yf_,_xf_,_c_,_p_) ((((_yf_)&1)<<15) | (((_xf_)&1)<<14) |\
+                                    (((_c_)&0xF)<<8) | (((_p_)&0xFF)))
 
 // Struct representing a sprite
 typedef struct

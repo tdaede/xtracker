@@ -1,4 +1,6 @@
-out/
+out/*.x
+src/*.o
 *.map
 *.x
 util/tm/resources/*
+*.map

@@ -3,12 +3,14 @@
 #include <iocs.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "pcg.h"
-#include "joy.h"
-#include "crtc.h"
-#include "vidcon.h"
-#include "vbl.h"
+#include <string.h>
+#include "system/pcg.h"
+#include "system/joy.h"
+#include "system/crtc.h"
+#include "system/vidcon.h"
+#include "system/vbl.h"
 
+#include "render_pattern.h"
 
 void init(void)
 {
@@ -81,16 +83,7 @@ void init(void)
 	pcg_set_disp_en(1);
 }
 
-const char testprint[] = 
-{
-	"Xtracker v0.02\n"
-	"--------------\n\n"
-	"C-4 02 ---- ---- | "
-	"G-2 04 0301 0400 | "
-	"F#3 01 EB25 ---- | \n"
-};
-
-void bg0print(uint16_t x, uint16_t y, const char *s)
+void bg0print(const char *s, uint16_t x, uint16_t y, int pal)
 {
 	uint16_t x_orig = x;
 	pcg_set_bg0_xscroll(0);
@@ -104,7 +97,7 @@ void bg0print(uint16_t x, uint16_t y, const char *s)
 		}
 		else
 		{
-			pcg_set_bg0_tile(x, y, PCG_ATTR(0,0,1,*s));
+			pcg_set_bg0_tile(x, y, PCG_ATTR(0,0,pal,*s));
 			s++;
 			x++;
 		}
@@ -171,11 +164,30 @@ int main(int argc, char **argv)
 	wait_for_vblank();
 	pcg_set_disp_en(0);
 	// Set a palette
+	vidcon_set_spr_color(0, PALRGB(2, 2, 2));
 	vidcon_set_spr_color(1, PALRGB(31, 31, 31));
 	vidcon_set_spr_color(2, PALRGB(31, 0, 0));
 	vidcon_set_spr_color(3, PALRGB(3, 3, 28));
+	for (int i = 0; i < 128; i++)
+	{
+		vidcon_set_spr_color(i, PALRGB(i % 32, i % 16, 24 + (i % 8)));
+	}
 
-	bg0print(0, 0, testprint);
+	PatternCell test_pattern[64];
+	test_pattern[0].note = 32;
+	test_pattern[0].inst = 3;
+	test_pattern[0].cmd1 = 'V';
+	test_pattern[0].arg1 = 0x69;
+	test_pattern[0].cmd2 = 'B';
+	test_pattern[0].arg2 = 0x1;
+	test_pattern[4].note = 16;
+	test_pattern[4].inst = 2;
+	test_pattern[4].cmd1 = 'X';
+	test_pattern[4].arg1 = 0x13;
+	test_pattern[4].cmd2 = 'A';
+	test_pattern[4].arg2 = 0x37;
+
+	draw_pattern(test_pattern, 2);
 
 
 	// Enable

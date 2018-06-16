@@ -19,7 +19,7 @@ copies to the actual hardware registers, call vidcon_commit_regs().
 #include <stdint.h>
 
 // RGB palette entry macro
-#define PALRGB(r, g, b) ( ((r & 0x1F) << 6) | ((g & 0x1F) << 11) | ((b & 0x1F) << 1) )
+#define PALRGB(r, g, b) ( (((r) & 0x1F) << 6) | (((g) & 0x1F) << 11) | (((b) & 0x1F) << 1) )
 
 // Set up a sane default configuration
 // 512x512, 16-color
