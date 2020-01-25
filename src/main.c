@@ -10,7 +10,7 @@
 #include "system/vidcon.h"
 #include "system/vbl.h"
 
-#include "render_pattern.h"
+#include "xt_render.h"
 
 void init(void)
 {
@@ -108,10 +108,6 @@ static void movement_test(void)
 {
 	pcg_set_disp_en(1);
 
-	volatile uint8_t *kctrl = (volatile uint8_t *)0xE8E007;
-
-	*kctrl = 0x0E;
-
 	for (uint16_t i = 0; i < 600; i++)
 	{
 		wait_for_vblank();
@@ -122,35 +118,33 @@ static void movement_test(void)
 	}
 }
 
-int main(int argc, char **argv)
+static void opm_test(void)
 {
-	_dos_super(0);
-	_iocs_crtmod(4);
-	_iocs_b_curoff();
-	_iocs_g_clr_on();
-	volatile uint16_t *pcg = (volatile uint16_t *)PCG_TILE_DATA;
-	FILE *f;
+	x68k_opm_set_lr_fl_con(0, X68K_OPM_PAN_BOTH_ENABLE, 2, 7);
+	x68k_opm_set_oct_note(0, 4, OPM_NOTE_A);
+	x68k_opm_set_d1t_mul(0, 0, 4, 1);
+	x68k_opm_set_tl(0, 0, 31);
+	x68k_opm_set_ks_ar(0, 0, 2, 3);
+	x68k_opm_set_ame_d1r(0, 0, 0, 16);
+	x68k_opm_set_dt2_d2r(0, 0, 1, 16);
+	x68k_opm_set_d1l_rr(0, 0, 7, 7);
+	x68k_opm_set_key_on(0, 1);
+}
 
-	// Set up video registers
-
-	wait_for_vblank();
-
-	crtc_init_default();
-	vidcon_init_default();
-	vidcon_commit_regs();
-	pcg_init_default();
-	init();
-
+static void load_test_sprite(void)
+{
 	// Load the sprite from "sprite.bin"
-	f = fopen("sprite.bin", "rb");
+	FILE *f = fopen("sprite.bin", "rb");
 
 	if (!f)
 	{
 		printf("Error: Couldn't load file.\n");
-		return 0;
+		return;
 	}
 
+	volatile uint16_t *pcg = (volatile uint16_t *)PCG_TILE_DATA;
 
+	pcg_set_disp_en(0);
 	for (int i = 0; i < 64; i++)
 	{
 		volatile uint16_t *pcg_dest = pcg + 64;
@@ -160,42 +154,57 @@ int main(int argc, char **argv)
 		pcg_dest += i;
 		*pcg_dest = word;
 	}
-
-	wait_for_vblank();
-	pcg_set_disp_en(0);
 	// Set a palette
 	vidcon_set_spr_color(0, PALRGB(2, 2, 2));
 	vidcon_set_spr_color(1, PALRGB(31, 31, 31));
 	vidcon_set_spr_color(2, PALRGB(31, 0, 0));
 	vidcon_set_spr_color(3, PALRGB(3, 3, 28));
-	for (int i = 0; i < 128; i++)
-	{
-		vidcon_set_spr_color(i, PALRGB(i % 32, i % 16, 24 + (i % 8)));
-	}
 
-	PatternCell test_pattern[64];
-	test_pattern[0].note = 32;
-	test_pattern[0].inst = 3;
-	test_pattern[0].cmd1 = 'V';
-	test_pattern[0].arg1 = 0x69;
-	test_pattern[0].cmd2 = 'B';
-	test_pattern[0].arg2 = 0x1;
-	test_pattern[4].note = 16;
-	test_pattern[4].inst = 2;
-	test_pattern[4].cmd1 = 'X';
-	test_pattern[4].arg1 = 0x13;
-	test_pattern[4].cmd2 = 'A';
-	test_pattern[4].arg2 = 0x37;
-
-	draw_pattern(test_pattern, 2);
-
-
-	// Enable
 	fclose(f);
 	f = NULL;
+}
+
+int main(int argc, char **argv)
+{
+	_dos_super(0);
+	_iocs_crtmod(0);
+	_iocs_b_curoff();
+	_iocs_g_clr_on();
+
+	wait_for_vblank();
+
+	crtc_init_default();
+	vidcon_init_default();
+	vidcon_commit_regs();
+	pcg_init_default();
+
+	init();
+	load_test_sprite();
+
+	wait_for_vblank();
+
+	XtPhrase test_phrase;
+	memset((void *)&test_phrase, 0, sizeof(test_phrase));
+
+	test_phrase.cells[0].note = XT_NOTE_CS | (0x3 << 4);
+	test_phrase.cells[0].inst = 3;
+	test_phrase.cells[0].cmd1 = 'V';
+	test_phrase.cells[0].arg1 = 0x69;
+	test_phrase.cells[0].cmd2 = 'B';
+	test_phrase.cells[0].arg2 = 0x1;
+
+	test_phrase.cells[1].note = XT_NOTE_B | (0x06 << 4);
+	test_phrase.cells[1].inst = 2;
+	test_phrase.cells[1].cmd1 = '1';
+	test_phrase.cells[1].arg1 = 0x13;
+	test_phrase.cells[1].cmd2 = '2';
+	test_phrase.cells[1].arg2 = 0x37;
+
+	xt_draw_phrase(&test_phrase, 2);
+
+	opm_test();
 
 	movement_test();
 
-	// Place the sprite
 	return 0;
 }

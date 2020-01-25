@@ -52,7 +52,47 @@ typedef enum X68kOpmReg
 	OPM_REG_MAX = 0xFF
 } X68kOpmReg;
 
+#define X68K_OPM_TIMER_FLAG_CSM       0x80
+#define X68K_OPM_TIMER_FLAG_F_RESET_B 0x20
+#define X68K_OPM_TIMER_FLAG_F_RESET_A 0x10
+#define X68K_OPM_TIMER_FLAG_IRQ_EN_B  0x08
+#define X68K_OPM_TIMER_FLAG_IRQ_EN_A  0x04
+#define X68K_OPM_TIMER_FLAG_LOAD_B    0x02
+#define X68K_OPM_TIMER_FLAG_LOAD_A    0x01
+typedef enum X68kOpmLfoWave
+{
+	LFO_WAVE_SAW = 0x00,
+	LFO_WAVE_RECTANGLE,
+	LFO_WAVE_TRIANGLE,
+	LFO_WAVE_RAND,
+} X68kOpmLfoWave;
+
+#define X68K_OPM_PAN_RIGHT_ENABLE 0x80
+#define X68K_OPM_PAN_LEFT_ENABLE 0x40
+#define X68K_OPM_PAN_BOTH_ENABLE (X68K_OPM_PAN_RIGHT_ENABLE | X68K_OPM_PAN_LEFT_ENABLE)
+
+typedef enum X68kOpmNote
+{
+	OPM_NOTE_CS = 0x0,
+	OPM_NOTE_D  = 0x1,
+	OPM_NOTE_DS = 0x2,
+	OPM_NOTE_E  = 0x4,
+	OPM_NOTE_F  = 0x5,
+	OPM_NOTE_FS = 0x6,
+	OPM_NOTE_G  = 0x8,
+	OPM_NOTE_GS = 0x9,
+	OPM_NOTE_A  = 0xA,
+	OPM_NOTE_AS = 0xC,
+	OPM_NOTE_B  = 0xD,
+	OPM_NOTE_C  = 0xE,
+} X68kOpmNote;
+
 static inline void x68k_opm_set_test_mode(uint8_t en)
+{
+	x68k_opm_write(OPM_REG_TEST_MODE, en ? 0x01 : 0x00);
+}
+
+static inline void x68k_opm_set_lfo_reset(uint8_t en)
 {
 	x68k_opm_write(OPM_REG_TEST_MODE, en ? 0x02 : 0x00);
 }
@@ -72,28 +112,19 @@ static inline void x68k_opm_set_noise(uint8_t en, uint8_t nfreq)
 }
 
 // Period:  0 - 1023
-// Ta(sec) = (64 * (1024 - period)) / 4MHz
+// Ta(sec) = (64 * (1024 - period)) / CLK
 static inline void x68k_opm_set_clka_period(uint16_t period)
 {
 	x68k_opm_write(OPM_REG_CLKA_UPPER, period >> 2);
-	x68k_opm_write(OPM_REG_CLKA_LOWER, period & 0x0o3);
+	x68k_opm_write(OPM_REG_CLKA_LOWER, period & 0x03);
 }
 
 // Period:  0 - 255
-// Ta(sec) = (1024 * (256 - period)) / 4MHz
+// Ta(sec) = (1024 * (256 - period)) / CLK
 static inline void x68k_opm_set_clkb_period(uint8_t period)
 {
 	x68k_opm_write(OPM_REG_CLKB, period);
 }
-
-#define X68K_OPM_TIMER_FLAG_CSM       0x80
-#define X68K_OPM_TIMER_FLAG_F_RESET_B 0x20
-#define X68K_OPM_TIMER_FLAG_F_RESET_A 0x10
-#define X68K_OPM_TIMER_FLAG_IRQ_EN_B  0x08
-#define X68K_OPM_TIMER_FLAG_IRQ_EN_A  0x04
-#define X68K_OPM_TIMER_FLAG_LOAD_B    0x02
-#define X68K_OPM_TIMER_FLAG_LOAD_A    0x01
-
 static inline void x68k_opm_set_timer_flags(uint8_t flags)
 {
 	x68k_opm_write(OPM_REG_TIMER_FLAGS, flags);
@@ -116,20 +147,104 @@ static inline void x68k_opm_set_lfo_pm_depth(uint8_t depth)
 	x68k_opm_write(OPM_REG_LFO_DEPTH, 0x80 | depth);
 }
 
-typedef enum X68kOpmLfoWave
-{
-	LFO_WAVE_SAW = 0x00,
-	LFO_WAVE_RECTANGLE,
-	LFO_WAVE_TRIANGLE,
-	LFO_WAVE_RAND,
-} X68kOpmLfoWave;
-
-static inline void x68k_opm_set_control(uint8_t ct1_adpcm_8mhz, uint8_t ct2_fdc_ready,
+static inline void x68k_opm_set_control(uint8_t ct1_adpcm_8mhz,
+                                        uint8_t ct2_fdc_ready,
                                         X68kOpmLfoWave lfo_wave)
 {
 	x68k_opm_write(OPM_REG_CONTROL, (ct1_adpcm_8mhz ? 0x80 : 0x00) |
 	                                (ct2_fdc_ready ? 0x40 : 0x00) |
 	                                lfo_wave);
+}
+// Channel Enable: Use X68K_OPM_PAN_*_ENABLE bitfield
+// channel: 0 - 7
+// FL:      0 - 7
+// con:     0 - 7
+static inline void x68k_opm_set_lr_fl_con(uint8_t channel, uint8_t pan, uint8_t fl,
+                                          uint8_t con)
+{
+	x68k_opm_write(OPM_CH_PAN_FL_CON + channel, pan | (fl << 3) | con);
+}
+
+// Channel: 0 - 7
+// Octave:  0 - 7
+// Note:    X68kOpmNote values (0 - F)
+static inline void x68k_opm_set_oct_note(uint8_t channel, uint8_t octave,
+                                         X68kOpmNote note)
+{
+	x68k_opm_write(OPM_CH_OCT_NOTE + channel, note | (octave << 4 ));
+}
+
+// Channel:  0 - 7
+// Fraction: 0 - 63
+static inline void x68k_opm_set_key_fraction(uint8_t channel, uint8_t fraction)
+{
+	x68k_opm_write(OPM_CH_KF + channel, fraction << 2);
+}
+
+// Channel: 0 - 7
+// PMS:     0 - 7
+// AMS:     0 - 3
+static inline void x68k_opm_set_pms_ams(uint8_t channel, uint8_t pms, uint8_t ams)
+{
+	x68k_opm_write(OPM_CH_PMS_AMS + channel, (pms << 4) | ams);
+}
+
+// Channel: 0 - 7
+// Op:      0 - 7
+// DT1:     0 - 7
+// Mul:     0 - 7
+static inline void x68k_opm_set_d1t_mul(uint8_t channel, uint8_t op,
+                                        uint8_t dt1, uint8_t mul)
+{
+	x68k_opm_write(OPM_CH_DT1_MUL + channel + (8 * op), (dt1 << 4) | mul);
+}
+
+// Channel: 0 - 7
+// Op:      0 - 7
+// TL:      0 - 127
+static inline void x68k_opm_set_tl(uint8_t channel, uint8_t op, uint8_t tl)
+{
+	x68k_opm_write(OPM_CH_TL + channel + (8 * op), tl);
+}
+
+// Channel: 0 - 7
+// Op:      0 - 7
+// KS:      0 - 3
+// Ar:      0 - 31
+static inline void x68k_opm_set_ks_ar(uint8_t channel, uint8_t op,
+                                      uint8_t ks, uint8_t ar)
+{
+	x68k_opm_write(OPM_CH_TL + channel + (8 * op), ar | (ks << 6));
+}
+
+// Channel: 0 - 7
+// Op:      0 - 7
+// AME:     0 - 1
+// D1R:     0 - 31
+static inline void x68k_opm_set_ame_d1r(uint8_t channel, uint8_t op,
+                                        uint8_t ame, uint8_t d1r)
+{
+	x68k_opm_write(OPM_CH_TL + channel + (8 * op), (ame ? 0x80 : 0x00) | d1r);
+}
+
+// Channel: 0 - 7
+// Op:      0 - 7
+// DT2:     0 - 3
+// D2R:     0 - 31
+static inline void x68k_opm_set_dt2_d2r(uint8_t channel, uint8_t op,
+                                        uint8_t dt2, uint8_t d2r)
+{
+	x68k_opm_write(OPM_CH_TL + channel + (8 * op), (dt2 << 6) | d2r);
+}
+
+// Channel: 0 - 7
+// Op:      0 - 7
+// D1L:     0 - 15
+// RR:      0 - 15
+static inline void x68k_opm_set_d1l_rr(uint8_t channel, uint8_t op,
+                                       uint8_t d1l, uint8_t rr)
+{
+	x68k_opm_write(OPM_CH_TL + channel + (8 * op), rr | (d1l << 4));
 }
 
 #endif  // _OPM_H

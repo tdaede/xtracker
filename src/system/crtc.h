@@ -113,10 +113,10 @@ void crtc_set_color_mode(uint8_t v);
 // Set horizontal deflection frequency between 15.98KHz(0) and 31.50KHz(1)
 void crtc_set_horizontal_freq(uint8_t v);
 
-// Set vertical display size between 256(0), 512(1), or 1024i(2) if Hf=31.5Khz
+// Set vertical display size between 256(0), 512(1), or 1024(2) if Hf=31.5Khz
 void crtc_set_display_height(uint8_t v);
 
-// Set horizontal display size between 256(0), 512(1), 7868(2), or 50MHz(3)
+// Set horizontal display size between 256(0), 512(1), 768(2), or 50MHz(3)
 void crtc_set_display_width(uint8_t v);
 
 // Text screen access mask

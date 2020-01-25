@@ -1,5 +1,5 @@
 
-OUT_EXEC := xtracker
+OUT_EXEC := xt
 
 CC := human68k-gcc
 OBJCOPY := human68k-objcopy
