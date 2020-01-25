@@ -4,3 +4,6 @@ src/*.o
 *.x
 util/tm/resources/*
 *.map
+src/*/*.o
+src/*/*.o.*
+*.swp
