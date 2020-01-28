@@ -114,21 +114,49 @@ static void movement_test(void)
 		pcg_clear_sprites();
 		pcg_set_sprite(0, i, 0, PCG_ATTR(0, 0, 1, 1), 0x03);
 		pcg_set_bg0_tile(8, 8, PCG_ATTR(0,0,1,('0' + _iocs_joyget(0))));
+		x68k_opm_set_key_on(0, 0);
 		wait_for_vdisp();
 	}
 }
 
 static void opm_test(void)
 {
-	x68k_opm_set_lr_fl_con(0, X68K_OPM_PAN_BOTH_ENABLE, 2, 7);
-	x68k_opm_set_oct_note(0, 4, OPM_NOTE_A);
-	x68k_opm_set_d1t_mul(0, 0, 4, 1);
-	x68k_opm_set_tl(0, 0, 31);
-	x68k_opm_set_ks_ar(0, 0, 2, 3);
-	x68k_opm_set_ame_d1r(0, 0, 0, 16);
-	x68k_opm_set_dt2_d2r(0, 0, 1, 16);
-	x68k_opm_set_d1l_rr(0, 0, 7, 7);
-	x68k_opm_set_key_on(0, 1);
+	for (int i = 0; i < 8; i++)
+	{
+		x68k_opm_set_key_on(i, 0);
+		x68k_opm_set_lr_fl_con(i, X68K_OPM_PAN_BOTH_ENABLE, 0, 1);
+		switch(i)
+		{
+			default:
+				continue;
+			case 0:
+				x68k_opm_set_oct_note(i, 4, OPM_NOTE_C);
+				break;
+			case 1:
+				x68k_opm_set_oct_note(i, 4, OPM_NOTE_E);
+				break;
+			case 2:
+				x68k_opm_set_oct_note(i, 4, OPM_NOTE_G);
+				break;
+			case 3:
+				x68k_opm_set_oct_note(i, 4, OPM_NOTE_B);
+				break;
+			case 4:
+				x68k_opm_set_oct_note(i, 5, OPM_NOTE_D);
+				break;
+		}
+
+		for (int j = 0; j < 4; j++)
+		{
+			x68k_opm_set_d1t_mul(i, j, 4, 1);
+			x68k_opm_set_tl(i, j, 16);
+			x68k_opm_set_ks_ar(i, j, 2, 14);
+			x68k_opm_set_ame_d1r(i, j, 0, 3);
+			x68k_opm_set_dt2_d2r(i, j, 1, 2);
+			x68k_opm_set_d1l_rr(i, j, 7, 7);
+		}
+		x68k_opm_set_key_on(i, 0xF);
+	}
 }
 
 static void load_test_sprite(void)

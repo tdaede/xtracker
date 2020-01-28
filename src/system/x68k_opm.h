@@ -46,8 +46,8 @@ typedef enum X68kOpmReg
 	OPM_CH_TL = 0x60,
 	OPM_CH_KS_AR = 0x80,
 	OPM_CH_AME_D1R = 0xA0,
-	OPM_DT2_D2R = 0xC0,
-	OPM_D1L_RR = 0xE0,
+	OPM_CH_DT2_D2R = 0xC0,
+	OPM_CH_D1L_RR = 0xE0,
 
 	OPM_REG_MAX = 0xFF
 } X68kOpmReg;
@@ -98,10 +98,10 @@ static inline void x68k_opm_set_lfo_reset(uint8_t en)
 }
 
 // Channel: 0 - 7
-// Key:     0 - F
-static inline void x68k_opm_set_key_on(uint8_t channel, uint8_t key)
+// SN:     0 - F
+static inline void x68k_opm_set_key_on(uint8_t channel, uint8_t sn)
 {
-	x68k_opm_write(OPM_REG_KEY_ON, channel | (key << 3));
+	x68k_opm_write(OPM_REG_KEY_ON, channel | (sn << 3));
 }
 
 // fnoise(Hz) = 4MHZ / (32 * nfreq)
@@ -206,7 +206,6 @@ static inline void x68k_opm_set_tl(uint8_t channel, uint8_t op, uint8_t tl)
 {
 	x68k_opm_write(OPM_CH_TL + channel + (8 * op), tl);
 }
-
 // Channel: 0 - 7
 // Op:      0 - 7
 // KS:      0 - 3
@@ -214,7 +213,7 @@ static inline void x68k_opm_set_tl(uint8_t channel, uint8_t op, uint8_t tl)
 static inline void x68k_opm_set_ks_ar(uint8_t channel, uint8_t op,
                                       uint8_t ks, uint8_t ar)
 {
-	x68k_opm_write(OPM_CH_TL + channel + (8 * op), ar | (ks << 6));
+	x68k_opm_write(OPM_CH_KS_AR + channel + (8 * op), ar | (ks << 6));
 }
 
 // Channel: 0 - 7
@@ -224,7 +223,7 @@ static inline void x68k_opm_set_ks_ar(uint8_t channel, uint8_t op,
 static inline void x68k_opm_set_ame_d1r(uint8_t channel, uint8_t op,
                                         uint8_t ame, uint8_t d1r)
 {
-	x68k_opm_write(OPM_CH_TL + channel + (8 * op), (ame ? 0x80 : 0x00) | d1r);
+	x68k_opm_write(OPM_CH_AME_D1R + channel + (8 * op), (ame ? 0x80 : 0x00) | d1r);
 }
 
 // Channel: 0 - 7
@@ -234,7 +233,7 @@ static inline void x68k_opm_set_ame_d1r(uint8_t channel, uint8_t op,
 static inline void x68k_opm_set_dt2_d2r(uint8_t channel, uint8_t op,
                                         uint8_t dt2, uint8_t d2r)
 {
-	x68k_opm_write(OPM_CH_TL + channel + (8 * op), (dt2 << 6) | d2r);
+	x68k_opm_write(OPM_CH_DT2_D2R + channel + (8 * op), (dt2 << 6) | d2r);
 }
 
 // Channel: 0 - 7
@@ -244,7 +243,7 @@ static inline void x68k_opm_set_dt2_d2r(uint8_t channel, uint8_t op,
 static inline void x68k_opm_set_d1l_rr(uint8_t channel, uint8_t op,
                                        uint8_t d1l, uint8_t rr)
 {
-	x68k_opm_write(OPM_CH_TL + channel + (8 * op), rr | (d1l << 4));
+	x68k_opm_write(OPM_CH_D1L_RR + channel + (8 * op), rr | (d1l << 4));
 }
 
 #endif  // _OPM_H
