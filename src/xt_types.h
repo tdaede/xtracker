@@ -2,12 +2,12 @@
 #define XT_TYPES_H
 
 #include <stdint.h>
-#include "system/x68k_opm.h"
+#include "x68000/x68k_opm.h"
 
 #define XT_SONG_TITLE_LENGTH 64
 
 #define XT_PHRASE_MAX_ROWS 64
-#define XT_PHRASES_PER_CHANNEL 64
+#define XT_PHRASES_PER_CHANNEL 96
 #define XT_FM_CHANNEL_COUNT 8
 #define XT_PCM_CHANNEL_COUNT 4
 #define XT_TOTAL_CHANNEL_COUNT (XT_FM_CHANNEL_COUNT + XT_PCM_CHANNEL_COUNT)
@@ -74,8 +74,7 @@ typedef enum XtNote
 } XtNote;
 
 #define XT_NOTE_TONE_MASK      0x0F
-#define XT_NOTE_OCTAVE_MASK    0x70
-#define XT_NOTE_NO_KEY_ON_MASK 0x80
+#define XT_NOTE_OCTAVE_MASK    0xF0
 
 // A single line of a phrase pattern.
 typedef struct XtCell
@@ -117,7 +116,7 @@ typedef struct XtInstrument
 } XtInstrument;
 
 // One whole song in memory.
-typedef struct XtSong
+typedef struct XtTrack
 {
 	XtPhrase phrases[XT_TOTAL_CHANNEL_COUNT * XT_PHRASES_PER_CHANNEL];
 	XtFrame frames[XT_FRAME_COUNT];
@@ -130,6 +129,6 @@ typedef struct XtSong
 	int16_t frame_count;  // Length of the song in arrangement rows.
 
 	int16_t loop_point;  // Arrangement row to return to (-1 for no repeat).
-} XtSong;
+} XtTrack;
 
 #endif

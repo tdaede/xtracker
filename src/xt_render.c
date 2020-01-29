@@ -1,85 +1,124 @@
 #include "xt_render.h"
 
-#include "system/pcg.h"
+#include "common.h"
+
+#include <stdio.h>
+
+#include "x68000/x68k_pcg.h"
 
 #define PATTERN_DRAW_MAX_LENGTH 48
 
-#define PAL_NOTE    1
-#define PAL_INST    2
-#define PAL_CMD     3
-#define PAL_ARG     4
+#define PAL_NOTE    0
+#define PAL_INST    0
+#define PAL_CMD     0
+#define PAL_ARG     0
 
-static inline const char *string_for_note(const XtNote note)
+	// These strings look odd because they align to tiles in letter positions
+	// for non-letter things (e.g. '-'. '#').
+	// h = '#'
+	// i = '='
+	// j = '^'
+	// k = '-' (left)
+	// l = '-' (right)
+
+// Labels starting at XT_NOTE_NONE.
+static const uint8_t note_labels[] =
 {
-	const char *strings[] =
-	{
-		[XT_NOTE_NONE] = "--",
-		[XT_NOTE_CS]   = "C#",
-		[XT_NOTE_D]    = "D-",
-		[XT_NOTE_DS]   = "D#",
-		[XT_NOTE_E]    = "E-",
-		[XT_NOTE_F]    = "F-",
-		[XT_NOTE_FS]   = "F#",
-		[XT_NOTE_G]    = "G-",
-		[XT_NOTE_GS]   = "G#",
-		[XT_NOTE_A]    = "A-",
-		[XT_NOTE_AS]   = "A#",
-		[XT_NOTE_B]    = "B-",
-		[XT_NOTE_C]    = "C-",
-	};
-	if (note == XT_NOTE_OFF) return "==";
-	if (note == XT_NOTE_CUT) return "^^";
-	return strings[note & XT_NOTE_TONE_MASK];
-}
-
-static inline void draw_cell(const XtCell *cell, int x, int y)
-{
-	int8_t octave = (cell->note & XT_NOTE_OCTAVE_MASK) >> 4;
-	// TODO: Alternate palette for no-key-on notes
-	uint8_t inst = (cell->inst);
-
-	const char *note_str = string_for_note(cell->note);
-
-	pcg_set_bg1_tile(x + 0, y,  PCG_ATTR(0, 0, PAL_NOTE, note_str[0]));
-	pcg_set_bg1_tile(x + 1, y, PCG_ATTR(0, 0, PAL_NOTE, note_str[1]));
-
-	pcg_set_bg1_tile(x + 2, y, PCG_ATTR(0, 0, PAL_NOTE, '0' + octave));
-
-	pcg_set_bg1_tile(x + 3, y, PCG_ATTR(0, 0, PAL_INST, '0' + (((inst & 0xF0) >> 4))));
-	pcg_set_bg1_tile(x + 4, y, PCG_ATTR(0, 0, PAL_INST, '0' + (inst & 0xF)));
-
-	if (cell->cmd1 == XT_CMD_NONE)
-	{
-		pcg_set_bg1_tile(x + 5, y, PCG_ATTR(0, 0, PAL_CMD, '-'));
-		pcg_set_bg1_tile(x + 6, y, PCG_ATTR(0, 0, PAL_ARG, '-'));
-		pcg_set_bg1_tile(x + 7, y, PCG_ATTR(0, 0, PAL_ARG, '-'));
-	}
-	else
-	{
-		uint8_t arg = cell->arg1;
-		pcg_set_bg1_tile(x + 5, y, PCG_ATTR(0, 0, PAL_CMD, cell->cmd1));
-		pcg_set_bg1_tile(x + 6, y, PCG_ATTR(0, 0, PAL_ARG, '0' + ((arg & 0xF0) >> 4)));
-		pcg_set_bg1_tile(x + 7, y, PCG_ATTR(0, 0, PAL_ARG, '0' + (arg & 0xF)));
-	}
-	if (cell->cmd2 == XT_CMD_NONE)
-	{
-		pcg_set_bg1_tile(x + 8, y, PCG_ATTR(0, 0, PAL_CMD, '-'));
-		pcg_set_bg1_tile(x + 9, y, PCG_ATTR(0, 0, PAL_ARG, '-'));
-		pcg_set_bg1_tile(x + 10, y, PCG_ATTR(0, 0, PAL_ARG, '-'));
-	}
-	else
-	{
-		uint8_t arg = cell->arg2;
-		pcg_set_bg1_tile(x + 8, y, PCG_ATTR(0, 0, PAL_CMD, cell->cmd2));
-		pcg_set_bg1_tile(x + 9, y, PCG_ATTR(0, 0, PAL_ARG,  '0' + ((arg & 0xF0) >> 4)));
-		pcg_set_bg1_tile(x + 10, y, PCG_ATTR(0, 0, PAL_ARG, '0' + (arg & 0xF)));
-	}
-}
+	"kl"
+	"ch"
+	"dl"
+	"dh"
+	"el"
+	"fl"
+	"fh"
+	"gl"
+	"gh"
+	"al"
+	"ah"
+	"bl"
+	"cl"
+};
 
 void xt_draw_phrase(XtPhrase *phrase, int16_t x)
 {
-	pcg_set_bg1_tile(79, 0, PCG_ATTR(0, 0, PAL_NOTE, 'U'));
-	draw_cell(&phrase->cells[0], x, 4);
-	draw_cell(&phrase->cells[1], x, 5);
-	draw_cell(&phrase->cells[2], x, 6);
+	const int cell_width_cells = 7;
+	const int nt_width_cells = 512 / 8;
+	int num_cells = ARRAYSIZE(phrase->cells) - 1;
+	const XtCell *cell = &phrase->cells[0];
+	volatile uint16_t *nt0 = (volatile uint16_t *)PCG_BG0_NAME;
+	volatile uint16_t *nt1 = (volatile uint16_t *)PCG_BG1_NAME;
+	nt0 += x;
+	nt1 += x;
+	do
+	{
+		// Note column. Notes get full-width chars. They are a little narrower than
+		// the alotted 7px, so letter characters are pushed 1px to the right to let
+		// the whole column have a margin. Characters on the right side ('-', '#',
+		// etc) are pushed one pixel to the left correspondingly.
+		// TODO: Change the backing using BG1 for no-key-on notes.
+		*nt1++ = 0;
+		*nt1++ = 0;
+		if (cell->note == XT_NOTE_OFF)
+		{
+			*nt0++ = PCG_ATTR(0, 0, PAL_NOTE, 'i');
+			*nt0++ = PCG_ATTR(0, 0, PAL_NOTE, 'i');
+		}
+		else if (cell->note == XT_NOTE_CUT)
+		{
+			*nt0++ = PCG_ATTR(0, 0, PAL_NOTE, 'j');
+			*nt0++ = PCG_ATTR(0, 0, PAL_NOTE, 'j');
+		}
+		else
+		{
+			const uint8_t note = cell->note & XT_NOTE_TONE_MASK;
+			*nt0++ = PCG_ATTR(0, 0, PAL_NOTE, note_labels[note * 2]);
+			*nt0++ = PCG_ATTR(0, 0, PAL_NOTE, note_labels[1 + note * 2]);
+		}
+
+		const uint8_t octave = cell->note >> 4;
+		*nt0++ = PCG_ATTR(0, 0, PAL_NOTE, 0x01 + octave);
+
+		// Instrument.
+		const uint8_t instr_high = 0x70 + (cell->inst >> 4);
+		const uint8_t instr_low = 0x70 + (cell->inst & 0x0F);
+		*nt1++ = PCG_ATTR(0, 0, PAL_INST, instr_high);
+		*nt0++ = PCG_ATTR(0, 0, PAL_INST, instr_low);
+		nt1++;
+
+		// Command 1.
+		const uint16_t empty_cmd_column = PCG_ATTR(0, 0, PAL_CMD, '_');
+		const uint16_t empty_arg_column = PCG_ATTR(0, 0, PAL_ARG, '_');
+		if (cell->cmd1 == XT_CMD_NONE)
+		{
+			*nt0++ = empty_cmd_column;
+			*nt1++ = empty_arg_column;
+			*nt0++ = empty_arg_column;
+		}
+		else
+		{
+			const uint8_t arg_high = 0x10 + (cell->arg1 >> 4);
+			const uint8_t arg_low = 0x10 + (cell->arg1 & 0xF);
+			*nt0++ = PCG_ATTR(0, 0, PAL_CMD, cell->cmd1);
+			*nt1++ = PCG_ATTR(0, 0, PAL_ARG, arg_high);
+			*nt0++ = PCG_ATTR(0, 0, PAL_ARG, arg_low);
+		}
+		// Command 2.
+		if (cell->cmd2 == XT_CMD_NONE)
+		{
+			*nt1++ = empty_cmd_column;
+			*nt0++ = empty_arg_column;
+			*nt1++ = empty_arg_column;
+		}
+		else
+		{
+			const uint8_t arg_high = 0x10 + (cell->arg2 >> 4);
+			const uint8_t arg_low = 0x10 + (cell->arg2 & 0xF);
+			*nt1++ = PCG_ATTR(0, 0, PAL_CMD, cell->cmd2);
+			*nt0++ = PCG_ATTR(0, 0, PAL_ARG, arg_high);
+			*nt1++ = PCG_ATTR(0, 0, PAL_ARG, arg_low);
+		}
+		cell++;
+		nt0 += (nt_width_cells - cell_width_cells);
+		nt1 += (nt_width_cells - cell_width_cells);
+	} while (num_cells--);
 }
