@@ -230,9 +230,12 @@ void xt_update_opm_registers(Xt *xt)
 		XtFmChannelState *fm_state = &xt->fm_state[i];
 		XtInstrument *inst = &fm_state->instrument;
 		XtInstrument *inst_prev = &fm_state->instrument_prev;
-		// Send register data if it does not match the previous copy.
 
-		// TODO: Send key-on events
+		if (fm_state->key_state != fm_state->key_state_prev)
+		{
+			x68k_opm_write(i + OPM_REG_KEY_ON,
+			               (fm_state->key_state == KEY_STATE_ON ? 0x78 : 0)|i);
+		}
 
 		// TODO: Create TL caches, and use that to apply both note cut, and
 		//       the channel amplitude settings, to the TL.
