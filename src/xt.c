@@ -60,10 +60,10 @@ static inline void xt_read_cell_cmd(Xt *xt, XtFmChannelState *fm_state,
 			break;
 
 		case XT_CMD_PAN:
-			if (arg == 0x11) fm_state->reg_20_pan_overlay = 0xC0;
-			else if (arg == 0x01) fm_state->reg_20_pan_overlay = 0x80;
-			else if (arg == 0x10) fm_state->reg_20_pan_overlay = 0x40;
-			else fm_state->reg_20_pan_overlay = 0;
+			if (arg == 0x11) fm_state->reg_20_overlay = 0xC0;
+			else if (arg == 0x01) fm_state->reg_20_overlay = 0x80;
+			else if (arg == 0x10) fm_state->reg_20_overlay = 0x40;
+			else fm_state->reg_20_overlay = 0;
 			break;
 
 		case XT_CMD_TUNE:
@@ -165,11 +165,6 @@ static inline void xt_update_fm_key_state(XtFmChannelState *fm_state)
 	}
 }
 
-static inline void fm_tx(uint8_t addr, uint8_t new_val, uint8_t old_val)
-{
-	if (new_val != old_val) x68k_opm_write(addr, new_val);
-}
-
 void xt_tick(Xt *xt)
 {
 	// Process all channels for playback.
@@ -222,6 +217,11 @@ void xt_tick(Xt *xt)
 	}
 }
 
+static inline void fm_tx(uint8_t addr, uint8_t new_val, uint8_t old_val)
+{
+	if (new_val != old_val) x68k_opm_write(addr, new_val);
+}
+
 void xt_update_opm_registers(Xt *xt)
 {
 	// Commit registers based on new state.
@@ -234,18 +234,14 @@ void xt_update_opm_registers(Xt *xt)
 
 		// TODO: Send key-on events
 
-
-
-		// TODO: Cut TL of channel's carrier(s) if key is set to CUT, and
-		//       update it in the instrument cache so it is reset on next note.
-
-
-		// TODO: Filter reg 20 for panning with the reg 20 overlay byte.
+		// TODO: Create TL caches, and use that to apply both note cut, and
+		//       the channel amplitude settings, to the TL.
 
 		fm_tx(i + 0x28, fm_state->reg_28_cache, fm_state->reg_28_cache_prev);
 		fm_tx(i + 0x30, fm_state->reg_30_cache, fm_state->reg_30_cache_prev);
 
-		fm_tx(i + 0x20, inst->reg_20_pan_fl_con, inst_prev->reg_20_pan_fl_con);
+		fm_tx(i + 0x20, inst->reg_20_pan_fl_con | fm_state->reg_20_overlay,
+		                inst_prev->reg_20_pan_fl_con | fm_state->reg_20_overlay);
 		fm_tx(i + 0x38, inst->reg_38_pms_ams, inst_prev->reg_38_pms_ams);
 
 		fm_tx(i + 0x40, inst->reg_40_dt1_mul[0], inst_prev->reg_40_dt1_mul[0]);
@@ -280,7 +276,6 @@ void xt_update_opm_registers(Xt *xt)
 
 		fm_state->key_state_prev = fm_state->key_state;
 		fm_state->instrument_prev = fm_state->instrument;
-
 		fm_state->reg_28_cache_prev = fm_state->reg_28_cache;
 		fm_state->reg_30_cache_prev = fm_state->reg_30_cache;
 	}

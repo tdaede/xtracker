@@ -53,7 +53,7 @@ typedef struct XtFmChannelState
 	uint16_t mute_delay_count;
 	uint16_t cut_delay_count;
 
-	uint8_t reg_20_pan_overlay;
+	uint8_t reg_20_overlay;
 	int8_t tune;  // Fine offset to be applied to pitch fraction.
 
 } XtFmChannelState;
