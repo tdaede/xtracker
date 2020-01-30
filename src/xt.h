@@ -66,14 +66,22 @@ typedef struct Xt
 	uint16_t current_frame;  // Index into the entire track.
 	uint16_t current_phrase_row;  // Index into the current phrase.
 
-	uint16_t ticks_per_row;  // Ticks per row.
+	uint16_t current_ticks_per_row;  // Ticks per row.
 	uint16_t tick_counter;  // Counts down from the period.
 	uint16_t timer_period;  // Period of timer ticks.
 
 	uint16_t noise_enable;
+
+	uint16_t playing;
+	uint16_t repeat_frame;
 } Xt;
 
 void xt_tick(Xt *xt);
 void xt_update_opm_registers(Xt *xt);
+
+// -1 to resume playback at current frame
+// repeat to cause it to play the same frame repeatedly
+void xt_start_playing(Xt *xt, int16_t frame, uint16_t repeat);
+void xt_stop_playing(Xt *xt);
 
 #endif  // _XT_H

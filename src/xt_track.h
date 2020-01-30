@@ -135,7 +135,6 @@ typedef struct XtTrack
 	uint16_t num_samples;
 	XtSample samples[XT_SAMPLE_COUNT];
 
-	int16_t ticks_per_row_base;  // Number of ticks that elapse per row.
 	int16_t ticks_per_row;  // Current ticks per row (can change during play)
 	int16_t timer_period;  // Period of ticks.
 

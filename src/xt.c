@@ -52,7 +52,7 @@ static inline void xt_read_cell_cmd(Xt *xt, XtFmChannelState *fm_state,
 			break;
 
 		case XT_CMD_SPEED:
-			xt->ticks_per_row = arg;
+			xt->current_ticks_per_row = arg;
 			break;
 
 		case XT_CMD_NOISE_EN:
@@ -165,8 +165,36 @@ static inline void xt_update_fm_key_state(XtFmChannelState *fm_state)
 	}
 }
 
+static inline void xt_playback_counters(Xt *xt)
+{
+	xt->tick_counter++;
+	if (xt->tick_counter >= xt->current_ticks_per_row)
+	{
+		xt->tick_counter = 0;
+		xt->current_phrase_row++;
+		if (xt->current_phrase_row >= xt->track.phrase_length)
+		{
+			xt->current_phrase_row = 0;
+			if (!xt->repeat_frame) xt->current_frame++;
+			if (xt->current_frame >= xt->track.num_frames)
+			{
+				if (xt->track.loop_point < 0)
+				{
+					xt->playing = 0;
+					xt->current_frame = 0;
+				}
+				else
+				{
+					xt->current_frame = xt->track.loop_point;
+				}
+			}
+		}
+	}
+}
+
 void xt_tick(Xt *xt)
 {
+	if (!xt->playing) return;
 	// Process all channels for playback.
 	for (uint16_t i = 0; i < XT_FM_CHANNEL_COUNT; i++)
 	{
@@ -187,12 +215,9 @@ void xt_tick(Xt *xt)
 			xt_read_cell_data(xt, fm_state, cell);
 			xt_read_cell_cmd(xt, fm_state, cell->cmd1, cell->arg1);
 			xt_read_cell_cmd(xt, fm_state, cell->cmd2, cell->arg2);
-			xt->tick_counter = xt->ticks_per_row;
 		}
-		else
-		{
-			xt->tick_counter--;
-		}
+
+		xt_playback_counters(xt);
 
 		xt_mod_tick(&fm_state->mod_vibrato);
 		xt_mod_tick(&fm_state->mod_tremolo);
@@ -224,6 +249,7 @@ static inline void fm_tx(uint8_t addr, uint8_t new_val, uint8_t old_val)
 
 void xt_update_opm_registers(Xt *xt)
 {
+	if (!xt->playing) return;
 	// Commit registers based on new state.
 	for (uint16_t i = 0; i < XT_FM_CHANNEL_COUNT; i++)
 	{
@@ -282,4 +308,33 @@ void xt_update_opm_registers(Xt *xt)
 		fm_state->reg_28_cache_prev = fm_state->reg_28_cache;
 		fm_state->reg_30_cache_prev = fm_state->reg_30_cache;
 	}
+}
+
+static inline void cut_all_opm_sound(void)
+{
+	// Silence any lingering channel noise.
+	for (uint16_t i = 0; i < XT_FM_CHANNEL_COUNT; i++)
+	{
+		x68k_opm_set_key_on(i, 0);
+		x68k_opm_set_tl(i, 0, 0x7F);
+		x68k_opm_set_tl(i, 1, 0x7F);
+		x68k_opm_set_tl(i, 2, 0x7F);
+		x68k_opm_set_tl(i, 3, 0x7F);
+	}
+}
+
+void xt_start_playing(Xt *xt, int16_t frame, uint16_t repeat)
+{
+	cut_all_opm_sound();
+	xt->repeat_frame = repeat;
+	xt->playing = 1;
+
+	if (frame >= 0) xt->current_frame = frame;
+	xt->current_phrase_row = 0;
+}
+
+void xt_stop_playing(Xt *xt)
+{
+	cut_all_opm_sound();
+	xt->playing = 0;
 }
