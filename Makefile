@@ -6,9 +6,11 @@ OBJCOPY := human68k-objcopy
 CFLAGS := -std=c99 -O2 -fshort-enums -fomit-frame-pointer -Wall -Werror -I$(HUMAN68K)/human68k/include -Isrc
 LDFLAGS := -Wl,-q,-Map=$(OUT_EXEC).map -L$(HUMAN68K)/human68k/lib
 
-SOURCES := $(wildcard src/*.c) $(wildcard src/*/*.c)
 OBJECTS := $(SOURCES:.c=.o)
 
+SOURCES := $(shell find ./$(SRCDIR)/ -type f -name '*.c')
+RESOURCES := $(shell find ./$(RESDIR)/ -type f -name '*.rc')
+OBJECTS := $(SOURCES:.c=.o)
 
 .PHONY: all clean
 
@@ -19,10 +21,13 @@ clean:
 	rm -rf out/$(OUT_EXEC).x
 
 $(OUT_EXEC): $(OBJECTS)
-	$(CC) -o $(OUT_EXEC).bin $(LDFLAGS) $(CFLAGS) $(OBJECTS)
-	mkdir -p out
-	$(OBJCOPY) -v -O xfile $(OUT_EXEC).bin out/$(OUT_EXEC).x
-	rm $(OUT_EXEC).bin
+	@bash -c 'printf "\t\e[94m[ LNK ]\e[0m $(OBJECTS)\n"'
+	@$(CC) -o $(OUT_EXEC).bin $(LDFLAGS) $(CFLAGS) $(OBJECTS)
+	@mkdir -p out
+	@$(OBJCOPY) -v -O xfile $(OUT_EXEC).bin out/$(OUT_EXEC).x > /dev/null
+	@rm $(OUT_EXEC).bin
+	@bash -c 'printf "\e[92m\n\tBuild Complete. \e[0m\n\n"'
 
-.c.o:
-	$(CC) -c $(CFLAGS) $< -o $@
+%.o: %.c
+	@bash -c 'printf "\t\e[96m[  C  ]\e[0m $<\n"'
+	@$(CC) -c $(CFLAGS) $< -o $@

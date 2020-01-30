@@ -10,6 +10,7 @@
 #include "x68000/x68k_vidcon.h"
 #include "x68000/x68k_vbl.h"
 
+#include "xt.h"
 #include "xt_render.h"
 
 void init(void)

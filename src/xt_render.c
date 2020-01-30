@@ -1,7 +1,6 @@
 #include "xt_render.h"
 
 #include "common.h"
-
 #include <stdio.h>
 
 #include "x68000/x68k_pcg.h"
