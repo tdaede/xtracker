@@ -11,14 +11,15 @@
 
 #define x68k_opm_status() (*OPM_STATUS)
 
-#define x68k_busy() ((*OPM_STATUS) & 0x80)
-#define x68k_timer_a() ((*OPM_STATUS) & 0x01)
-#define x68k_timer_b() ((*OPM_STATUS) & 0x02)
+#define x68k_opm_busy() ((*OPM_STATUS) & 0x80)
+#define x68k_opm_timer_a() ((*OPM_STATUS) & 0x01)
+#define x68k_opm_timer_b() ((*OPM_STATUS) & 0x02)
 
 #define x68k_opm_write(address, data) do \
 { \
-	while(*OPM_STATUS & 0x80) continue; \
+	while(x68k_opm_busy()) __asm__ volatile ("nop"); \
 	*OPM_ADDRESS = (address); \
+	while(x68k_opm_busy()) __asm__ volatile ("nop"); \
 	*OPM_DATA = (data); \
 } while(0);
 

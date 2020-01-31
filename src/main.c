@@ -10,6 +10,7 @@
 #include "x68000/x68k_vidcon.h"
 #include "x68000/x68k_vbl.h"
 
+#include "common.h"
 #include "xt.h"
 #include "xt_render.h"
 
@@ -50,18 +51,6 @@ void init(void)
 	else
 	{
 		volatile uint16_t *pcg = (volatile uint16_t *)PCG_TILE_DATA;
-		/*
-		// 8x16 font
-		for (uint16_t i = 0; i < 8192; i++)
-		{
-			volatile uint16_t *x68k_pcg_dest = pcg + i;
-			uint16_t word = 0;
-			word |= (fgetc(f) << 8);
-			word |= fgetc(f);
-			*x68k_pcg_dest = word;
-		}*/
-
-		// 8x8 font
 		for (uint16_t i = 0; i < 2048; i++)
 		{
 			volatile uint16_t *x68k_pcg_dest = pcg + i;
@@ -71,75 +60,279 @@ void init(void)
 			*x68k_pcg_dest = word;
 		}
 
-
 		fclose(f);
 	}
 
 	x68k_pcg_set_disp_en(1);
 }
 
-void bg0print(const char *s, uint16_t x, uint16_t y, int pal)
+static Xt xt;
+static XtTrackRenderer renderer;
+
+void set_demo_melodies(void)
 {
-	uint16_t x_orig = x;
-	x68k_pcg_set_bg0_xscroll(0);
-	while(*s)
-	{
-		if (*s == '\n')
-		{
-			y++;
-			x = x_orig;
-			s++;
-		}
-		else
-		{
-			x68k_pcg_set_bg0_tile(x, y, PCG_ATTR(0,0,pal,*s));
-			s++;
-			x++;
-		}
-	}
+	XtPhrase *ph = &xt.track.phrases[0];
+
+	int cell_idx = 0;
+	ph->cells[cell_idx++].note = XT_NOTE_C | (1 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx++].note = XT_NOTE_C | (1 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx++].note = XT_NOTE_C | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx++].note = XT_NOTE_C | (1 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_F | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx++].note = XT_NOTE_G | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_A | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx++].note = XT_NOTE_F | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (1 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (1 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (1 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_C | (1 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+
+	ph += XT_PHRASES_PER_CHANNEL;
+	cell_idx = 0;
+	ph->cells[cell_idx].cmd1 = 'O';
+	ph->cells[cell_idx].arg1 = 0x01;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_G | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_G | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_G | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_CUT;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_F | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_F | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_F | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_F | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_CUT;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_G | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph += XT_PHRASES_PER_CHANNEL;
+	cell_idx = 0;
+	ph->cells[cell_idx].cmd1 = 'O';
+	ph->cells[cell_idx].arg1 = 0x11;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_E | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_E | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_E | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_CUT;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_D | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_D | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_D | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_D | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_CUT;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_E | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph += XT_PHRASES_PER_CHANNEL;
+	cell_idx = 0;
+	ph->cells[cell_idx].cmd1 = 'O';
+	ph->cells[cell_idx].arg1 = 0x10;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_C | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_C | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_C | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_CUT;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_CUT;
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_C | (5 << 4);
+	ph->cells[cell_idx].inst = 0x01;
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
 }
 
-static void opm_test(void)
+void set_demo_instruments(void)
 {
-	for (int i = 0; i < 8; i++)
-	{
-		x68k_opm_set_key_on(i, 0);
-		x68k_opm_set_lr_fl_con(i, X68K_OPM_PAN_BOTH_ENABLE, 0, 1);
-		switch(i)
-		{
-			default:
-				continue;
-			case 0:
-				x68k_opm_set_oct_note(i, 4, OPM_NOTE_C);
-				break;
-			case 1:
-				x68k_opm_set_oct_note(i, 4, OPM_NOTE_E);
-				break;
-			case 2:
-				x68k_opm_set_oct_note(i, 4, OPM_NOTE_G);
-				break;
-			case 3:
-				x68k_opm_set_oct_note(i, 4, OPM_NOTE_B);
-				break;
-			case 4:
-				x68k_opm_set_oct_note(i, 5, OPM_NOTE_D);
-				break;
-		}
+	XtInstrument *ins = &xt.track.instruments[0];
 
-		for (int j = 0; j < 4; j++)
-		{
-			x68k_opm_set_d1t_mul(i, j, 4, 1);
-			x68k_opm_set_tl(i, j, 16);
-			x68k_opm_set_ks_ar(i, j, 2, 14);
-			x68k_opm_set_ame_d1r(i, j, 0, 3);
-			x68k_opm_set_dt2_d2r(i, j, 1, 2);
-			x68k_opm_set_d1l_rr(i, j, 7, 7);
-		}
-		x68k_opm_set_key_on(i, 0xF);
-	}
+	// The bass from Private Eye (Daiginjou)
+	ins->reg_20_pan_fl_con = 0xFB;
+	ins->reg_38_pms_ams = 0;
+
+	ins->reg_40_dt1_mul[0] = 8;
+	ins->reg_60_tl[0] = 30;
+	ins->reg_80_ks_ar[0] = 27;
+	ins->reg_A0_ame_d1r[0] = 14;
+	ins->reg_C0_dt2_d2r[0] = 0;
+	ins->reg_E0_d1l_rr[0] = (3 << 4) | 10;
+
+	ins->reg_40_dt1_mul[1] = 2;
+	ins->reg_60_tl[1] = 45;
+	ins->reg_80_ks_ar[1] = 31;
+	ins->reg_A0_ame_d1r[1] = 12;
+	ins->reg_C0_dt2_d2r[1] = 0;
+	ins->reg_E0_d1l_rr[1] = (3 << 4) | 10;
+
+	ins->reg_40_dt1_mul[2] = 0;
+	ins->reg_60_tl[2] = 15;
+	ins->reg_80_ks_ar[2] = 31;
+	ins->reg_A0_ame_d1r[2] = 18;
+	ins->reg_C0_dt2_d2r[2] = 0;
+	ins->reg_E0_d1l_rr[2] = (5 << 4) | 10;
+
+	ins->reg_40_dt1_mul[3] = 0;
+	ins->reg_60_tl[3] = 6;
+	ins->reg_80_ks_ar[3] = 31;
+	ins->reg_A0_ame_d1r[3] = 5;
+	ins->reg_C0_dt2_d2r[3] = 5;
+	ins->reg_E0_d1l_rr[3] = (14 << 4) | 15;
+
+	ins++;
+
+	ins->reg_20_pan_fl_con = 0xC0 | (5 << 3) | 4;
+	ins->reg_38_pms_ams = 0;
+
+	ins->reg_40_dt1_mul[0] = 1;
+	ins->reg_60_tl[0] = 11;
+	ins->reg_80_ks_ar[0] = 30;
+	ins->reg_A0_ame_d1r[0] = 8;
+	ins->reg_C0_dt2_d2r[0] = 0;
+	ins->reg_E0_d1l_rr[0] = (4 << 4) | 15;
+
+	ins->reg_40_dt1_mul[1] = 1;
+	ins->reg_60_tl[1] = 10;
+	ins->reg_80_ks_ar[1] = 30;
+	ins->reg_A0_ame_d1r[1] = 6;
+	ins->reg_C0_dt2_d2r[1] = 0;
+	ins->reg_E0_d1l_rr[1] = (4 << 4) | 15;
+
+	ins->reg_40_dt1_mul[2] = 0;
+	ins->reg_60_tl[2] = 22;
+	ins->reg_80_ks_ar[2] = 30;
+	ins->reg_A0_ame_d1r[2] = 11;
+	ins->reg_C0_dt2_d2r[2] = 0;
+	ins->reg_E0_d1l_rr[2] = (10 << 4) | 15;
+
+	ins->reg_40_dt1_mul[3] = 0;
+	ins->reg_60_tl[3] = 8;
+	ins->reg_80_ks_ar[3] = 30;
+	ins->reg_A0_ame_d1r[3] = 3;
+	ins->reg_C0_dt2_d2r[3] = 0;
+	ins->reg_E0_d1l_rr[3] = (0 << 4) | 15;
 }
-
-static XtPhrase test_phrase;
 
 int main(int argc, char **argv)
 {
@@ -156,26 +349,40 @@ int main(int argc, char **argv)
 
 	init();
 
-	printf("Some overlay text");
+	xt_track_renderer_init(&renderer);
 
-	x68k_vbl_wait_for_vblank();
+	// Set up xt with some test data
+	memset((void *)&xt, 0, sizeof(xt));
 
-	memset((void *)&test_phrase, 0, sizeof(test_phrase));
+	xt.track.num_phrases = 16;
 
-	for (int i = 0; i < 12; i++)
-	{
-		test_phrase.cells[i].note = (XT_NOTE_CS + i) | (0x3 << 4);
-	}
+	xt.track.num_frames = 4;
+	xt.track.num_instruments = 1;
+
+	xt.track.ticks_per_row = 6;
+	xt.track.timer_period = 0xABCD;
+
+	xt.track.phrase_length = 32;
+	xt.track.loop_point = 1;
+
+	xt_start_playing(&xt, 0, 0);
+
+	set_demo_instruments();
+	set_demo_melodies();
 
 	for (int i = 0; i < 512; i++)
 	{
+		x68k_pcg_set_bg0_yscroll(xt.current_phrase_row * 8);
+		x68k_pcg_set_bg1_yscroll(xt.current_phrase_row * 8);
+
+		xt_tick(&xt);
+		xt_update_opm_registers(&xt);
+
 		x68k_wait_for_vsync();
-		x68k_pcg_set_bg0_xscroll(-i);
-		x68k_pcg_set_bg1_xscroll(-i -4);
-		for (int j = 0; j < 5; j++) xt_draw_phrase(&test_phrase, 7 * j);
+		xt_track_renderer_tick(&xt, &renderer);
 	}
 
-	opm_test();
+//	opm_test();
 
 	return 0;
 }

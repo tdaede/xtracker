@@ -1,5 +1,7 @@
 #include "xt.h"
 
+#include <stdio.h>
+
 static inline void xt_read_cell_cmd(Xt *xt, XtFmChannelState *fm_state,
                                     uint8_t cmd, uint8_t arg)
 {
@@ -105,21 +107,24 @@ static inline void xt_read_cell_cmd(Xt *xt, XtFmChannelState *fm_state,
 // Read note and patch data from a cell.
 static inline void xt_read_cell_data(const Xt *xt, XtFmChannelState *fm_state,
                                      const XtCell *cell)
-{
+{	// Update note, and set it up to be played.
+	if (cell->note == XT_NOTE_NONE) return;
+
 	// Update patch information.
 	fm_state->instrument = xt->track.instruments[cell->inst];
 
-	// Update note, and set it up to be played.
-	if (cell->note == XT_NOTE_NONE) return;
+
 	
 	if (cell->note == XT_NOTE_OFF)
 	{
 		fm_state->key_state = KEY_STATE_OFF;
+		fm_state->key_command = KEY_COMMAND_OFF;
 		fm_state->key_on_delay_count = 0;
 	}
 	else if (cell->note == XT_NOTE_CUT)
 	{
 		fm_state->key_state = KEY_STATE_CUT;
+		fm_state->key_command = KEY_COMMAND_OFF;
 		fm_state->key_on_delay_count = 0;
 	}
 	else
@@ -132,18 +137,19 @@ static inline void xt_read_cell_data(const Xt *xt, XtFmChannelState *fm_state,
 	}
 }
 
-// If a key's press state is newly ON and the delay is zero, 
 static inline void xt_update_fm_key_state(XtFmChannelState *fm_state)
 {
 	if (fm_state->key_on_delay_count > 0)
 	{
 		fm_state->key_on_delay_count--;
-		if (fm_state->key_on_delay_count == 0 &&
-	        fm_state->key_state == KEY_STATE_ON_PENDING)
-		{
-			fm_state->key_on_delay_count = 0;
-			fm_state->key_state = KEY_STATE_ON;
-		}
+	}
+
+	if (fm_state->key_on_delay_count == 0 &&
+	    fm_state->key_state == KEY_STATE_ON_PENDING)
+	{
+		fm_state->key_on_delay_count = 0;
+		fm_state->key_state = KEY_STATE_ON;
+		fm_state->key_command = KEY_COMMAND_ON;
 	}
 
 	if (fm_state->mute_delay_count > 0)
@@ -152,6 +158,8 @@ static inline void xt_update_fm_key_state(XtFmChannelState *fm_state)
 		if (fm_state->mute_delay_count == 0)
 		{
 			fm_state->key_state = KEY_STATE_OFF;
+			fm_state->key_command = KEY_COMMAND_OFF;
+
 		}
 	}
 
@@ -161,6 +169,7 @@ static inline void xt_update_fm_key_state(XtFmChannelState *fm_state)
 		if (fm_state->cut_delay_count == 0)
 		{
 			fm_state->key_state = KEY_STATE_CUT;
+			fm_state->key_command = KEY_COMMAND_OFF;
 		}
 	}
 }
@@ -217,8 +226,6 @@ void xt_tick(Xt *xt)
 			xt_read_cell_cmd(xt, fm_state, cell->cmd2, cell->arg2);
 		}
 
-		xt_playback_counters(xt);
-
 		xt_mod_tick(&fm_state->mod_vibrato);
 		xt_mod_tick(&fm_state->mod_tremolo);
 
@@ -240,6 +247,8 @@ void xt_tick(Xt *xt)
 
 		xt_update_fm_key_state(fm_state);
 	}
+
+	xt_playback_counters(xt);
 }
 
 static inline void fm_tx(uint8_t addr, uint8_t new_val, uint8_t old_val)
@@ -257,10 +266,24 @@ void xt_update_opm_registers(Xt *xt)
 		XtInstrument *inst = &fm_state->instrument;
 		XtInstrument *inst_prev = &fm_state->instrument_prev;
 
-		if (fm_state->key_state != fm_state->key_state_prev)
+		if (fm_state->key_command == KEY_COMMAND_ON)
 		{
-			x68k_opm_write(i + OPM_REG_KEY_ON,
-			               (fm_state->key_state == KEY_STATE_ON ? 0x78 : 0)|i);
+			x68k_opm_set_key_on(i, 0x0);
+			x68k_opm_set_key_on(i, 0xF);
+			fm_state->key_command = KEY_COMMAND_NONE;
+		}
+		else if (fm_state->key_command == KEY_COMMAND_OFF)
+		{
+			// TODO: Remove once we have TL cache
+			if (fm_state->key_state == KEY_STATE_CUT)
+			{
+				inst->reg_60_tl[0] = 0x7F;
+				inst->reg_60_tl[1] = 0x7F;
+				inst->reg_60_tl[2] = 0x7F;
+				inst->reg_60_tl[3] = 0x7F;
+			}
+			x68k_opm_set_key_on(i, 0x0);
+			fm_state->key_command = KEY_COMMAND_NONE;
 		}
 
 		// TODO: Create TL caches, and use that to apply both note cut, and
@@ -303,7 +326,6 @@ void xt_update_opm_registers(Xt *xt)
 		fm_tx(i + 0xF0, inst->reg_E0_d1l_rr[0], inst_prev->reg_E0_d1l_rr[0]);
 		fm_tx(i + 0xF0, inst->reg_E0_d1l_rr[0], inst_prev->reg_E0_d1l_rr[0]);
 
-		fm_state->key_state_prev = fm_state->key_state;
 		fm_state->instrument_prev = fm_state->instrument;
 		fm_state->reg_28_cache_prev = fm_state->reg_28_cache;
 		fm_state->reg_30_cache_prev = fm_state->reg_30_cache;
@@ -329,7 +351,13 @@ void xt_start_playing(Xt *xt, int16_t frame, uint16_t repeat)
 	xt->repeat_frame = repeat;
 	xt->playing = 1;
 
+	xt->current_ticks_per_row = xt->track.ticks_per_row;
+
 	if (frame >= 0) xt->current_frame = frame;
+	if (xt->current_frame >= xt->track.num_frames)
+	{
+		xt->current_frame = xt->track.num_frames - 1;
+	}
 	xt->current_phrase_row = 0;
 }
 

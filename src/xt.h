@@ -24,6 +24,13 @@ typedef enum XtFmKeyState
 	KEY_STATE_CUT,
 } XtFmKeyState;
 
+typedef enum XtFmKeyCommand
+{
+	KEY_COMMAND_NONE,
+	KEY_COMMAND_ON,
+	KEY_COMMAND_OFF,
+} XtFmKeyCommand;
+
 typedef struct XtFmChannelState
 {
 	// FM registers are compared against the last written values, so as to
@@ -55,6 +62,8 @@ typedef struct XtFmChannelState
 
 	uint8_t reg_20_overlay;
 	int8_t tune;  // Fine offset to be applied to pitch fraction.
+
+	XtFmKeyCommand key_command;
 
 } XtFmChannelState;
 
