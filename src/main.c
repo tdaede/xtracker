@@ -13,19 +13,50 @@
 #include "common.h"
 #include "xt.h"
 #include "xt_render.h"
+#include "xt_phrase_editor.h"
 
-void init(void)
+static Xt xt;
+static XtTrackRenderer renderer;
+// static XtPhraseEditor phrase_editor;
+
+int video_init(void)
 {
-	FILE *f;
-	// Clear BG nametables
+	x68k_crtc_init_default();
+	x68k_vidcon_init_default();
+	x68k_vidcon_commit_regs();
+	x68k_pcg_init_default();
+
+	// Clear PCG nametables and data
 	x68k_vbl_wait_for_vblank();
 	x68k_pcg_set_disp_en(0);
-	memset((void *)PCG_SPR_TABLE, 0, 0x400);
 	memset((void *)PCG_TILE_DATA, 0, 0x4000);
+
+	// Load font tileset
+	FILE *f;
+	f = fopen("pcg.bin", "rb");
+	if (!f)
+	{
+		fprintf(stderr, "Error: Could not load PCG data.\n");
+		return 0;
+	}
+	else
+	{
+		volatile uint16_t *pcg_data = (volatile uint16_t *)PCG_TILE_DATA;
+		while (!feof(f))
+		{
+			uint16_t word = 0;
+			word |= (fgetc(f) << 8);
+			word |= fgetc(f);
+			*pcg_data++ = word;
+		}
+		fclose(f);
+	}
+
+	memset((void *)PCG_SPR_TABLE, 0, 0x400);
 	memset((void *)PCG_BG0_NAME, 0, 0x2000);
 	memset((void *)PCG_BG1_NAME, 0, 0x2000);
 
-	// Set up BG layers
+	// Set up PCG to use backgrounds for our text
 	x68k_pcg_set_bg0_txsel(0);
 	x68k_pcg_set_bg1_txsel(1);
 	x68k_pcg_set_bg0_enable(1);
@@ -40,34 +71,9 @@ void init(void)
 	x68k_pcg_set_bg0_yscroll(0);
 	x68k_pcg_set_bg1_yscroll(0);
 
-	x68k_pcg_clear_sprites();
-
-	// Load font tileset
-	f = fopen("font_4x8.bin", "rb");
-	if (!f)
-	{
-		printf("Error: Could not load font_4x8.bin\n");
-	}
-	else
-	{
-		volatile uint16_t *pcg = (volatile uint16_t *)PCG_TILE_DATA;
-		for (uint16_t i = 0; i < 2048; i++)
-		{
-			volatile uint16_t *x68k_pcg_dest = pcg + i;
-			uint16_t word = 0;
-			word |= (fgetc(f) << 8);
-			word |= fgetc(f);
-			*x68k_pcg_dest = word;
-		}
-
-		fclose(f);
-	}
-
 	x68k_pcg_set_disp_en(1);
+	return 1;
 }
-
-static Xt xt;
-static XtTrackRenderer renderer;
 
 void set_demo_melodies(void)
 {
@@ -334,26 +340,8 @@ void set_demo_instruments(void)
 	ins->reg_E0_d1l_rr[3] = (0 << 4) | 15;
 }
 
-int main(int argc, char **argv)
+void set_demo_meta(void)
 {
-	_dos_super(0);
-	_iocs_crtmod(0);
-	_iocs_b_curoff();
-	_iocs_g_clr_on();
-
-	x68k_vbl_wait_for_vblank();
-	x68k_crtc_init_default();
-	x68k_vidcon_init_default();
-	x68k_vidcon_commit_regs();
-	x68k_pcg_init_default();
-
-	init();
-
-	xt_track_renderer_init(&renderer);
-
-	// Set up xt with some test data
-	memset((void *)&xt, 0, sizeof(xt));
-
 	xt.track.num_phrases = 16;
 
 	xt.track.num_frames = 4;
@@ -366,7 +354,25 @@ int main(int argc, char **argv)
 	xt.track.loop_point = 1;
 
 	xt_start_playing(&xt, 0, 0);
+}
 
+int main(int argc, char **argv)
+{
+	_dos_super(0);
+	_iocs_crtmod(0);
+	_iocs_b_curoff();
+	_iocs_g_clr_on();
+
+	if (!video_init())
+	{
+		fprintf(stderr, "Couldn't start Xtracker.\n");
+	}
+
+	xt_track_renderer_init(&renderer);
+
+	// Set up xt with some test data
+	memset((void *)&xt, 0, sizeof(xt));
+	set_demo_meta();
 	set_demo_instruments();
 	set_demo_melodies();
 

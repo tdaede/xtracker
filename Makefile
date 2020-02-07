@@ -12,15 +12,19 @@ SOURCES := $(shell find ./$(SRCDIR)/ -type f -name '*.c')
 RESOURCES := $(shell find ./$(RESDIR)/ -type f -name '*.rc')
 OBJECTS := $(SOURCES:.c=.o)
 
-.PHONY: all clean
+.PHONY: all clean resources
 
 all: $(OUT_EXEC)
 
 clean:
 	$(RM) $(OBJECTS) $(OUT_EXEC).x $(OUT_EXEC).map
-	rm -rf out/$(OUT_EXEC).x
+	rm -rf ./out/
 
-$(OUT_EXEC): $(OBJECTS)
+resources:
+	@mkdir -p out
+	@cp -r res/* out/
+
+$(OUT_EXEC): $(OBJECTS) resources
 	@bash -c 'printf "\t\e[94m[ LNK ]\e[0m $(OBJECTS)\n"'
 	@$(CC) -o $(OUT_EXEC).bin $(LDFLAGS) $(CFLAGS) $(OBJECTS)
 	@mkdir -p out

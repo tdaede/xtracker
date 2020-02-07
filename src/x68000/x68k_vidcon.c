@@ -42,7 +42,7 @@ void x68k_vidcon_set_color_mode(uint8_t color_mode)
 // R1 config: priorities
 
 // Set priorities of the graphics layers, where 0 is the topmost
-void x68k_vidcon_set_prio_sprites(uint8_t priority)
+void x68k_vidcon_set_prio_pcg(uint8_t priority)
 {
 	regs[1] &= ~(0x3000);
 	regs[1] |= (priority & 0x0003) << 12;
@@ -150,7 +150,7 @@ void x68k_vidcon_border_enable(uint8_t en)
 }
 
 // Enable sprite display
-void x68k_vidcon_sprite_enable(uint8_t en)
+void x68k_vidcon_pcg_enable(uint8_t en)
 {
 	regs[2] &= ~(0x0040);
 	regs[2] |= (en ? 0x0040 : 0x0000);

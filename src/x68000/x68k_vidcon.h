@@ -19,7 +19,9 @@ copies to the actual hardware registers, call x68k_vidcon_commit_regs().
 #include <stdint.h>
 
 // RGB palette entry macro
-#define PALRGB(r, g, b) ( (((r) & 0x1F) << 6) | (((g) & 0x1F) << 11) | (((b) & 0x1F) << 1) )
+#define PAL_RGB5(r, g, b) ( (((r) & 0x1F) << 6) | (((g) & 0x1F) << 11) | (((b) & 0x1F) << 1) )
+#define PAL_RGB4(r, g, b) ( (((r << 1) & 0x1F) << 6) | (((g << 1) & 0x1F) << 11) | (((b << 1) & 0x1F) << 1) )
+#define PAL_RGB8(r, g, b) ( (((r >> 3) & 0x1F) << 6) | (((g >> 3) & 0x1F) << 11) | (((b >> 3) & 0x1F) << 1) )
 
 // Set up a sane default configuration
 // 512x512, 16-color
@@ -50,9 +52,9 @@ static inline void x68k_vidcon_set_text_color(uint8_t index, uint16_t val)
 }
 
 // Sprite palette entries
-static inline void x68k_vidcon_set_spr_color(uint8_t index, uint16_t val)
+static inline void x68k_vidcon_set_pcg_color(uint8_t index, uint16_t val)
 {
-	volatile uint16_t *p = (volatile uint16_t *)0xE82220;
+	volatile uint16_t *p = (volatile uint16_t *)0xE82200;
 	p += index;
 	*p = val;
 }
@@ -68,7 +70,7 @@ void x68k_vidcon_set_color_mode(uint8_t color_mode);
 // R1: priorities ============================================================
 
 // Set priorities of the graphics layers, where 0 is the topmost
-void x68k_vidcon_set_prio_sprites(uint8_t priority);
+void x68k_vidcon_set_prio_pcg(uint8_t priority);
 void x68k_vidcon_set_prio_text(uint8_t priority);
 void x68k_vidcon_set_prio_graphics(uint8_t priority);
 
@@ -108,7 +110,7 @@ void x68k_vidcon_set_gt(uint8_t gt_en);
 void x68k_vidcon_border_enable(uint8_t en);
 
 // Enable sprite display
-void x68k_vidcon_sprite_enable(uint8_t en);
+void x68k_vidcon_pcg_enable(uint8_t en);
 
 // Enable text plane display
 void x68k_vidcon_text_enable(uint8_t en);
