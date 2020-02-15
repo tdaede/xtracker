@@ -30,6 +30,9 @@ int video_init(void)
 	x68k_vbl_wait_for_vblank();
 	x68k_pcg_set_disp_en(0);
 	memset((void *)PCG_TILE_DATA, 0, 0x4000);
+	memset((void *)PCG_SPR_TABLE, 0, 0x400);
+	memset((void *)PCG_BG0_NAME, 0, 0x2000);
+	memset((void *)PCG_BG1_NAME, 0, 0x2000);
 
 	// Load font tileset
 	FILE *f;
@@ -37,24 +40,16 @@ int video_init(void)
 	if (!f)
 	{
 		fprintf(stderr, "Error: Could not load PCG data.\n");
-		return 0;
 	}
-	else
+	volatile uint16_t *pcg_data = (volatile uint16_t *)PCG_TILE_DATA;
+	while (!feof(f))
 	{
-		volatile uint16_t *pcg_data = (volatile uint16_t *)PCG_TILE_DATA;
-		while (!feof(f))
-		{
-			uint16_t word = 0;
-			word |= (fgetc(f) << 8);
-			word |= fgetc(f);
-			*pcg_data++ = word;
-		}
-		fclose(f);
+		uint16_t word = 0;
+		word |= (fgetc(f) << 8);
+		word |= fgetc(f);
+		*pcg_data++ = word;
 	}
-
-	memset((void *)PCG_SPR_TABLE, 0, 0x400);
-	memset((void *)PCG_BG0_NAME, 0, 0x2000);
-	memset((void *)PCG_BG1_NAME, 0, 0x2000);
+	fclose(f);
 
 	// Set up PCG to use backgrounds for our text
 	x68k_pcg_set_bg0_txsel(0);
@@ -80,30 +75,30 @@ void set_demo_melodies(void)
 	XtPhrase *ph = &xt.track.phrases[0];
 
 	int cell_idx = 0;
-	ph->cells[cell_idx++].note = XT_NOTE_C | (1 << 4);
-	ph->cells[cell_idx++].note = XT_NOTE_NONE;
-	ph->cells[cell_idx++].note = XT_NOTE_C | (1 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_C | (2 << 4);
 	ph->cells[cell_idx++].note = XT_NOTE_NONE;
 	ph->cells[cell_idx++].note = XT_NOTE_C | (2 << 4);
-	ph->cells[cell_idx++].note = XT_NOTE_OFF;
-	ph->cells[cell_idx++].note = XT_NOTE_C | (1 << 4);
-	ph->cells[cell_idx++].note = XT_NOTE_F | (2 << 4);
-	ph->cells[cell_idx++].note = XT_NOTE_OFF;
-	ph->cells[cell_idx++].note = XT_NOTE_G | (2 << 4);
-	ph->cells[cell_idx++].note = XT_NOTE_OFF;
-	ph->cells[cell_idx++].note = XT_NOTE_AS | (2 << 4);
-	ph->cells[cell_idx++].note = XT_NOTE_A | (2 << 4);
 	ph->cells[cell_idx++].note = XT_NOTE_NONE;
-	ph->cells[cell_idx++].note = XT_NOTE_F | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_C | (3 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx++].note = XT_NOTE_C | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_F | (3 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx++].note = XT_NOTE_G | (3 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_OFF;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (3 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_A | (3 << 4);
 	ph->cells[cell_idx++].note = XT_NOTE_NONE;
-	ph->cells[cell_idx++].note = XT_NOTE_AS | (1 << 4);
-	ph->cells[cell_idx++].note = XT_NOTE_NONE;
-	ph->cells[cell_idx++].note = XT_NOTE_AS | (1 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_F | (3 << 4);
 	ph->cells[cell_idx++].note = XT_NOTE_NONE;
 	ph->cells[cell_idx++].note = XT_NOTE_AS | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_NONE;
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (3 << 4);
 	ph->cells[cell_idx++].note = XT_NOTE_OFF;
-	ph->cells[cell_idx++].note = XT_NOTE_AS | (1 << 4);
-	ph->cells[cell_idx++].note = XT_NOTE_C | (1 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_AS | (2 << 4);
+	ph->cells[cell_idx++].note = XT_NOTE_C | (2 << 4);
 	ph->cells[cell_idx++].note = XT_NOTE_OFF;
 
 	ph += XT_PHRASES_PER_CHANNEL;
@@ -356,6 +351,9 @@ void set_demo_meta(void)
 	xt_start_playing(&xt, 0, 0);
 }
 
+uint8_t key_buf[32];
+uint8_t key_buf_pos = 0;
+
 int main(int argc, char **argv)
 {
 	_dos_super(0);
@@ -376,15 +374,14 @@ int main(int argc, char **argv)
 	set_demo_instruments();
 	set_demo_melodies();
 
-	for (int i = 0; i < 512; i++)
+	for (int i = 0; i < 4096; i++)
 	{
-		x68k_pcg_set_bg0_yscroll(xt.current_phrase_row * 8);
-		x68k_pcg_set_bg1_yscroll(xt.current_phrase_row * 8);
-
 		xt_tick(&xt);
 		xt_update_opm_registers(&xt);
 
 		x68k_wait_for_vsync();
+		x68k_pcg_set_bg0_yscroll(xt.current_phrase_row * 8);
+		x68k_pcg_set_bg1_yscroll(xt.current_phrase_row * 8);
 		xt_track_renderer_tick(&xt, &renderer);
 	}
 
