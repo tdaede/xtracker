@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 #include "common.h"
-#include "x68000/x68k_opm.h"
 #include "xt_track.h"
 #include "xt_mod.h"
 
@@ -65,6 +64,7 @@ typedef struct XtFmChannelState
 
 	XtFmKeyCommand key_command;
 
+	uint16_t cache_invalid;
 } XtFmChannelState;
 
 typedef struct Xt
@@ -85,6 +85,7 @@ typedef struct Xt
 	uint16_t repeat_frame;
 } Xt;
 
+void xt_init(Xt *xt);
 void xt_tick(Xt *xt);
 void xt_update_opm_registers(Xt *xt);
 

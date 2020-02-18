@@ -38,8 +38,8 @@ Each sprite:
 ---- ---8 7654 3210   Y position
 0x4:
 FE-- ---- ---- ----   V/H Reflect
----- BA98 ---- ----   Palette
----- ---- 7654 3210   Code
+---- BA98 ---- ----   Color
+---- ---- 7654 3210   Pattern
 0x6:
 ---- ---- ---- -210   Layer Priority
 
@@ -262,12 +262,12 @@ static inline volatile X68kPcgSprite *x68k_pcg_get_sprite(uint8_t idx)
 }
 
 // Semi-pointless sprite setter function
-static inline void x68k_pcg_set_sprite(uint8_t idx, uint16_t x,
-                                  int16_t y, int16_t attr, uint16_t prio)
+static inline void x68k_pcg_set_sprite(uint8_t idx, int16_t x,
+                                       int16_t y, uint16_t attr, uint16_t prio)
 {
 	volatile X68kPcgSprite *spr = x68k_pcg_get_sprite(idx);
-	spr->x = x+16;
-	spr->y = y+16;
+	spr->x = x + 16;
+	spr->y = y + 16;
 	spr->attr = attr;
 	spr->prio = prio;
 }
@@ -282,5 +282,9 @@ static inline void x68k_pcg_clear_sprites(void)
 		spr[i].prio = 0x00;
 	}
 }
+
+// Sprite drawing routines using an internal last-sprite variable.
+void x68k_pcg_add_sprite(int16_t x, int16_t y, uint16_t attr, uint16_t prio);
+void x68k_pcg_finish_sprites(void);
 
 #endif

@@ -23,7 +23,7 @@ static const uint16_t default_palette[] =
 	PAL_RGB8(0x33, 0x00, 0x99),  // Separator
 	PAL_RGB8(0x00, 0x00, 0x00),
 	PAL_RGB8(0x00, 0x00, 0x00),
-	PAL_RGB8(0x00, 0x00, 0x00),
+	PAL_RGB8(0x10, 0x10, 0xFF),  // Cursor
 	PAL_RGB8(0x00, 0x00, 0x00),  // Background
 };
 
@@ -187,14 +187,12 @@ void xt_track_renderer_repaint_channel(XtTrackRenderer *r, uint16_t channel)
 	r->channel_dirty[channel] = 1;
 }
 
-void xt_track_renderer_tick(Xt *xt, XtTrackRenderer *r)
+void xt_track_renderer_tick(XtTrackRenderer *r, Xt *xt, uint16_t frame)
 {
 	int phrase_x_pos = 0;
 	for (uint16_t i = 0; i < ARRAYSIZE(r->channel_dirty); i++)
 	{
-		const uint16_t idx_base = (XT_PHRASES_PER_CHANNEL * i);
-		const uint16_t idx = xt->track.frames[xt->current_frame].row_idx[i];
-		const uint16_t phrase_id = idx_base + idx;
+		const uint16_t phrase_id = xt_track_get_phrase_number_for_frame(&xt->track, i, frame);
 
 		if (phrase_id != r->last_phrase_num[i])
 		{

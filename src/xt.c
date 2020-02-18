@@ -1,6 +1,9 @@
 #include "xt.h"
 
 #include <stdio.h>
+#include <string.h>
+
+#include "x68000/x68k_opm.h"
 
 static inline void xt_read_cell_cmd(Xt *xt, XtFmChannelState *fm_state,
                                     uint8_t cmd, uint8_t arg)
@@ -201,6 +204,11 @@ static inline void xt_playback_counters(Xt *xt)
 	}
 }
 
+void xt_init(Xt *xt)
+{
+	memset((void *)&xt, 0, sizeof(*xt));
+}
+
 void xt_tick(Xt *xt)
 {
 	if (!xt->playing) return;
@@ -251,9 +259,9 @@ void xt_tick(Xt *xt)
 	xt_playback_counters(xt);
 }
 
-static inline void fm_tx(uint8_t addr, uint8_t new_val, uint8_t old_val)
+static inline void fm_tx(uint8_t addr, uint8_t new_val, uint8_t old_val, uint8_t force)
 {
-	if (new_val != old_val) x68k_opm_write(addr, new_val);
+	if (force || new_val != old_val) x68k_opm_write(addr, new_val);
 }
 
 void xt_update_opm_registers(Xt *xt)
@@ -289,46 +297,48 @@ void xt_update_opm_registers(Xt *xt)
 		// TODO: Create TL caches, and use that to apply both note cut, and
 		//       the channel amplitude settings, to the TL.
 
-		fm_tx(i + 0x28, fm_state->reg_28_cache, fm_state->reg_28_cache_prev);
-		fm_tx(i + 0x30, fm_state->reg_30_cache, fm_state->reg_30_cache_prev);
+		fm_tx(i + 0x28, fm_state->reg_28_cache, fm_state->reg_28_cache_prev, fm_state->cache_invalid);
+		fm_tx(i + 0x30, fm_state->reg_30_cache, fm_state->reg_30_cache_prev, fm_state->cache_invalid);
 
 		fm_tx(i + 0x20, inst->reg_20_pan_fl_con | fm_state->reg_20_overlay,
-		                inst_prev->reg_20_pan_fl_con | fm_state->reg_20_overlay);
-		fm_tx(i + 0x38, inst->reg_38_pms_ams, inst_prev->reg_38_pms_ams);
+		                inst_prev->reg_20_pan_fl_con | fm_state->reg_20_overlay, fm_state->cache_invalid);
+		fm_tx(i + 0x38, inst->reg_38_pms_ams, inst_prev->reg_38_pms_ams, fm_state->cache_invalid);
 
-		fm_tx(i + 0x40, inst->reg_40_dt1_mul[0], inst_prev->reg_40_dt1_mul[0]);
-		fm_tx(i + 0x48, inst->reg_40_dt1_mul[1], inst_prev->reg_40_dt1_mul[1]);
-		fm_tx(i + 0x50, inst->reg_40_dt1_mul[2], inst_prev->reg_40_dt1_mul[2]);
-		fm_tx(i + 0x58, inst->reg_40_dt1_mul[3], inst_prev->reg_40_dt1_mul[3]);
+		fm_tx(i + 0x40, inst->reg_40_dt1_mul[0], inst_prev->reg_40_dt1_mul[0], fm_state->cache_invalid);
+		fm_tx(i + 0x48, inst->reg_40_dt1_mul[1], inst_prev->reg_40_dt1_mul[1], fm_state->cache_invalid);
+		fm_tx(i + 0x50, inst->reg_40_dt1_mul[2], inst_prev->reg_40_dt1_mul[2], fm_state->cache_invalid);
+		fm_tx(i + 0x58, inst->reg_40_dt1_mul[3], inst_prev->reg_40_dt1_mul[3], fm_state->cache_invalid);
 
-		fm_tx(i + 0x60, inst->reg_60_tl[0], inst_prev->reg_60_tl[0]);
-		fm_tx(i + 0x68, inst->reg_60_tl[1], inst_prev->reg_60_tl[1]);
-		fm_tx(i + 0x70, inst->reg_60_tl[2], inst_prev->reg_60_tl[2]);
-		fm_tx(i + 0x78, inst->reg_60_tl[3], inst_prev->reg_60_tl[3]);
+		fm_tx(i + 0x60, inst->reg_60_tl[0], inst_prev->reg_60_tl[0], fm_state->cache_invalid);
+		fm_tx(i + 0x68, inst->reg_60_tl[1], inst_prev->reg_60_tl[1], fm_state->cache_invalid);
+		fm_tx(i + 0x70, inst->reg_60_tl[2], inst_prev->reg_60_tl[2], fm_state->cache_invalid);
+		fm_tx(i + 0x78, inst->reg_60_tl[3], inst_prev->reg_60_tl[3], fm_state->cache_invalid);
 
-		fm_tx(i + 0x80, inst->reg_80_ks_ar[0], inst_prev->reg_80_ks_ar[0]);
-		fm_tx(i + 0x88, inst->reg_80_ks_ar[1], inst_prev->reg_80_ks_ar[1]);
-		fm_tx(i + 0x90, inst->reg_80_ks_ar[2], inst_prev->reg_80_ks_ar[2]);
-		fm_tx(i + 0x98, inst->reg_80_ks_ar[3], inst_prev->reg_80_ks_ar[3]);
+		fm_tx(i + 0x80, inst->reg_80_ks_ar[0], inst_prev->reg_80_ks_ar[0], fm_state->cache_invalid);
+		fm_tx(i + 0x88, inst->reg_80_ks_ar[1], inst_prev->reg_80_ks_ar[1], fm_state->cache_invalid);
+		fm_tx(i + 0x90, inst->reg_80_ks_ar[2], inst_prev->reg_80_ks_ar[2], fm_state->cache_invalid);
+		fm_tx(i + 0x98, inst->reg_80_ks_ar[3], inst_prev->reg_80_ks_ar[3], fm_state->cache_invalid);
 
-		fm_tx(i + 0xA0, inst->reg_A0_ame_d1r[0], inst_prev->reg_A0_ame_d1r[0]);
-		fm_tx(i + 0xA8, inst->reg_A0_ame_d1r[1], inst_prev->reg_A0_ame_d1r[1]);
-		fm_tx(i + 0xB0, inst->reg_A0_ame_d1r[2], inst_prev->reg_A0_ame_d1r[2]);
-		fm_tx(i + 0xB8, inst->reg_A0_ame_d1r[3], inst_prev->reg_A0_ame_d1r[3]);
+		fm_tx(i + 0xA0, inst->reg_A0_ame_d1r[0], inst_prev->reg_A0_ame_d1r[0], fm_state->cache_invalid);
+		fm_tx(i + 0xA8, inst->reg_A0_ame_d1r[1], inst_prev->reg_A0_ame_d1r[1], fm_state->cache_invalid);
+		fm_tx(i + 0xB0, inst->reg_A0_ame_d1r[2], inst_prev->reg_A0_ame_d1r[2], fm_state->cache_invalid);
+		fm_tx(i + 0xB8, inst->reg_A0_ame_d1r[3], inst_prev->reg_A0_ame_d1r[3], fm_state->cache_invalid);
 
-		fm_tx(i + 0xC0, inst->reg_C0_dt2_d2r[0], inst_prev->reg_C0_dt2_d2r[0]);
-		fm_tx(i + 0xC8, inst->reg_C0_dt2_d2r[1], inst_prev->reg_C0_dt2_d2r[1]);
-		fm_tx(i + 0xD0, inst->reg_C0_dt2_d2r[2], inst_prev->reg_C0_dt2_d2r[2]);
-		fm_tx(i + 0xD8, inst->reg_C0_dt2_d2r[3], inst_prev->reg_C0_dt2_d2r[3]);
+		fm_tx(i + 0xC0, inst->reg_C0_dt2_d2r[0], inst_prev->reg_C0_dt2_d2r[0], fm_state->cache_invalid);
+		fm_tx(i + 0xC8, inst->reg_C0_dt2_d2r[1], inst_prev->reg_C0_dt2_d2r[1], fm_state->cache_invalid);
+		fm_tx(i + 0xD0, inst->reg_C0_dt2_d2r[2], inst_prev->reg_C0_dt2_d2r[2], fm_state->cache_invalid);
+		fm_tx(i + 0xD8, inst->reg_C0_dt2_d2r[3], inst_prev->reg_C0_dt2_d2r[3], fm_state->cache_invalid);
 
-		fm_tx(i + 0xE0, inst->reg_E0_d1l_rr[0], inst_prev->reg_E0_d1l_rr[0]);
-		fm_tx(i + 0xE0, inst->reg_E0_d1l_rr[0], inst_prev->reg_E0_d1l_rr[0]);
-		fm_tx(i + 0xF0, inst->reg_E0_d1l_rr[0], inst_prev->reg_E0_d1l_rr[0]);
-		fm_tx(i + 0xF0, inst->reg_E0_d1l_rr[0], inst_prev->reg_E0_d1l_rr[0]);
+		fm_tx(i + 0xE0, inst->reg_E0_d1l_rr[0], inst_prev->reg_E0_d1l_rr[0], fm_state->cache_invalid);
+		fm_tx(i + 0xE0, inst->reg_E0_d1l_rr[0], inst_prev->reg_E0_d1l_rr[0], fm_state->cache_invalid);
+		fm_tx(i + 0xF0, inst->reg_E0_d1l_rr[0], inst_prev->reg_E0_d1l_rr[0], fm_state->cache_invalid);
+		fm_tx(i + 0xF0, inst->reg_E0_d1l_rr[0], inst_prev->reg_E0_d1l_rr[0], fm_state->cache_invalid);
 
 		fm_state->instrument_prev = fm_state->instrument;
 		fm_state->reg_28_cache_prev = fm_state->reg_28_cache;
 		fm_state->reg_30_cache_prev = fm_state->reg_30_cache;
+
+		fm_state->cache_invalid = 0;
 	}
 }
 
@@ -347,10 +357,13 @@ static inline void cut_all_opm_sound(void)
 
 void xt_start_playing(Xt *xt, int16_t frame, uint16_t repeat)
 {
+	for (uint16_t i = 0; i < XT_FM_CHANNEL_COUNT; i++)
+	{
+		xt->fm_state[i].cache_invalid = 1;
+	}
 	cut_all_opm_sound();
 	xt->repeat_frame = repeat;
 	xt->playing = 1;
-
 	xt->current_ticks_per_row = xt->track.ticks_per_row;
 
 	if (frame >= 0) xt->current_frame = frame;

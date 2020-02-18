@@ -11,6 +11,8 @@
 #define XT_INSTRUMENT_COUNT 64
 #define XT_SAMPLE_COUNT 64
 
+#include "x68000/x68k_opm.h"
+
 typedef enum XtCmd
 {
 	XT_CMD_NONE = '\0',
@@ -143,5 +145,8 @@ typedef struct XtTrack
 
 	char memo[1024];
 } XtTrack;
+
+uint16_t xt_track_get_phrase_number_for_frame(XtTrack *t, uint16_t channel,
+                                              uint16_t frame);
 
 #endif  // _XT_TRACK_H

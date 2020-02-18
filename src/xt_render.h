@@ -20,6 +20,6 @@ void xt_track_renderer_init(XtTrackRenderer *r);
 
 void xt_track_renderer_repaint_channel(XtTrackRenderer *r, uint16_t channel);
 
-void xt_track_renderer_tick(Xt *xt, XtTrackRenderer *r);
+void xt_track_renderer_tick(XtTrackRenderer *r, Xt *xt, uint16_t frame);
 
 #endif

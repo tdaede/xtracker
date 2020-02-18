@@ -106,3 +106,24 @@ void x68k_pcg_set_hres(uint8_t h)
 	x68k_pcg_mode |= (h & 0x03);
 	*x68k_pcg_mode_r = x68k_pcg_mode;
 }
+
+static uint8_t spr_next = 0;
+static uint8_t spr_count_prev = 0;
+
+void x68k_pcg_add_sprite(int16_t x, int16_t y, uint16_t attr, uint16_t prio)
+{
+	while (spr_count_prev > 0)
+	{
+		spr_count_prev--;
+		volatile X68kPcgSprite *spr = x68k_pcg_get_sprite(spr_count_prev);
+		spr->x = 0;
+	}
+	if (spr_next >= 128) return;
+	x68k_pcg_set_sprite(spr_next++, x, y, attr, prio);
+}
+
+void x68k_pcg_finish_sprites(void)
+{
+	spr_count_prev = spr_next;
+	spr_next = 0;
+}
