@@ -58,9 +58,9 @@ int video_init(void)
 	x68k_pcg_set_bg1_txsel(1);
 	x68k_pcg_set_bg0_enable(1);
 	x68k_pcg_set_bg1_enable(1);
-	x68k_pcg_set_lh(1);
-	x68k_pcg_set_vres(0);
-	x68k_pcg_set_hres(0);
+	x68k_pcg_set_lh(0);
+	x68k_pcg_set_vres(0);  // Disable the line doubler.
+	x68k_pcg_set_hres(0);  // We want 8x8 tiles.
 
 	x68k_pcg_set_bg0_xscroll(0);
 	x68k_pcg_set_bg1_xscroll(-4);
@@ -202,6 +202,21 @@ int main(int argc, char **argv)
 				xt_stop_playing(&xt);
 			}
 		}
+
+		
+		if (xt_keys_pressed(&keys, XT_KEY_F2))
+		{
+			x68k_pcg_set_lh(xt_keys_held(&keys, XT_KEY_SHIFT) | (xt_keys_held(&keys, XT_KEY_CTRL) ? 2 : 0));
+		}
+		if (xt_keys_pressed(&keys, XT_KEY_F3))
+		{
+			x68k_pcg_set_vres(xt_keys_held(&keys, XT_KEY_SHIFT) | (xt_keys_held(&keys, XT_KEY_CTRL) ? 2 : 0));
+		}
+		if (xt_keys_pressed(&keys, XT_KEY_F4))
+		{
+			x68k_pcg_set_hres(xt_keys_held(&keys, XT_KEY_SHIFT) | (xt_keys_held(&keys, XT_KEY_CTRL) ? 2 : 0));
+		}
+
 		// TODO: These should be interrupt-driven using the OPM's timer.
 		xt_tick(&xt);
 		xt_phrase_editor_tick(&phrase_editor, &xt.track, &keys);

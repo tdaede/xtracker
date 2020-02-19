@@ -86,7 +86,7 @@ static const XtKeyID key_lookup[] =
 	[XT_KEY_NUMPAD_MULTIPLY] = {0x8, 0x02},
 	[XT_KEY_NUMPAD_DIVIDE] = {0x8, 0x01},
 
-	[XT_KEY_NUMPAD_ZERO] = {0x9, 0x80},
+	[XT_KEY_NUMPAD_0] = {0x9, 0x80},
 	[XT_KEY_ENTER] = {0x9, 0x40},
 	[XT_KEY_NUMPAD_3] = {0x9, 0x20},
 	[XT_KEY_NUMPAD_2] = {0x9, 0x10},
@@ -126,7 +126,7 @@ static const XtKeyID key_lookup[] =
 	[XT_KEY_F8] = {0xD, 0x08},
 	[XT_KEY_F7] = {0xD, 0x04},
 	[XT_KEY_F6] = {0xD, 0x02},
-	[XT_KEY_F5 ] {0xD, 0x01},
+	[XT_KEY_F5] {0xD, 0x01},
 
 	[XT_KEY_OPT2] = {0xE, 0x08},
 	[XT_KEY_OPT1] = {0xE, 0x04},
@@ -136,7 +136,7 @@ static const XtKeyID key_lookup[] =
 
 void xt_keys_init(XtKeys *k)
 {
-	memset((void *)k, 0, sizeof(*k));
+	memset(k, 0, sizeof(*k));
 }
 
 void xt_keys_update(XtKeys *k)

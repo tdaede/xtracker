@@ -206,7 +206,7 @@ static inline void xt_playback_counters(Xt *xt)
 
 void xt_init(Xt *xt)
 {
-	memset((void *)&xt, 0, sizeof(*xt));
+	memset(xt, 0, sizeof(*xt));
 }
 
 void xt_tick(Xt *xt)
@@ -301,7 +301,7 @@ void xt_update_opm_registers(Xt *xt)
 		fm_tx(i + 0x30, fm_state->reg_30_cache, fm_state->reg_30_cache_prev, fm_state->cache_invalid);
 
 		fm_tx(i + 0x20, inst->reg_20_pan_fl_con | fm_state->reg_20_overlay,
-		                inst_prev->reg_20_pan_fl_con | fm_state->reg_20_overlay, fm_state->cache_invalid);
+		                inst_prev->reg_20_pan_fl_con | fm_state->reg_20_overlay, 1);
 		fm_tx(i + 0x38, inst->reg_38_pms_ams, inst_prev->reg_38_pms_ams, fm_state->cache_invalid);
 
 		fm_tx(i + 0x40, inst->reg_40_dt1_mul[0], inst_prev->reg_40_dt1_mul[0], fm_state->cache_invalid);
@@ -365,6 +365,7 @@ void xt_start_playing(Xt *xt, int16_t frame, uint16_t repeat)
 	xt->repeat_frame = repeat;
 	xt->playing = 1;
 	xt->current_ticks_per_row = xt->track.ticks_per_row;
+	xt->tick_counter = 0;
 
 	if (frame >= 0) xt->current_frame = frame;
 	if (xt->current_frame >= xt->track.num_frames)

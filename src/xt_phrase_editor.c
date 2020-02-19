@@ -10,7 +10,7 @@
 
 void xt_phrase_editor_init(XtPhraseEditor *p)
 {
-	memset((void *)p, 0, sizeof(*p));
+	memset(p, 0, sizeof(*p));
 	p->state = EDITOR_NORMAL;
 }
 
@@ -168,7 +168,8 @@ static const XtKeyNotePairing note_lookup[] =
 };
 
 // Keys to perform entry on the note column.
-static inline uint16_t handle_note_entry(XtPhraseEditor *p, XtTrack *t, const XtKeys *k)
+static inline uint16_t handle_note_entry(XtPhraseEditor *p, XtTrack *t,
+                                         const XtKeys *k)
 {
 	if (xt_keys_held(k, XT_KEY_SHIFT)) return 0;
 	// TODO: Entry for PCM channels.
@@ -187,6 +188,158 @@ static inline uint16_t handle_note_entry(XtPhraseEditor *p, XtTrack *t, const Xt
 			cell->note = m->note | (octave << 4);
 			cell->inst = p->instrument;
 			return 1;
+		}
+	}
+	return 0;
+}
+
+typedef struct XtKeyNumberPairing
+{
+	XtKeyName key;
+	uint8_t value;
+} XtKeyNumberPairing;
+
+static const XtKeyNumberPairing number_lookup[] =
+{
+	{XT_KEY_0, 0},
+	{XT_KEY_1, 1},
+	{XT_KEY_2, 2},
+	{XT_KEY_3, 3},
+	{XT_KEY_4, 4},
+	{XT_KEY_5, 5},
+	{XT_KEY_6, 6},
+	{XT_KEY_7, 7},
+	{XT_KEY_8, 8},
+	{XT_KEY_9, 9},
+	{XT_KEY_A, 0xA},
+	{XT_KEY_B, 0xB},
+	{XT_KEY_C, 0xC},
+	{XT_KEY_D, 0xD},
+	{XT_KEY_E, 0xE},
+	{XT_KEY_F, 0xF},
+	{XT_KEY_NUMPAD_0, 0},
+	{XT_KEY_NUMPAD_1, 1},
+	{XT_KEY_NUMPAD_2, 2},
+	{XT_KEY_NUMPAD_3, 3},
+	{XT_KEY_NUMPAD_4, 4},
+	{XT_KEY_NUMPAD_5, 5},
+	{XT_KEY_NUMPAD_6, 6},
+	{XT_KEY_NUMPAD_7, 7},
+	{XT_KEY_NUMPAD_8, 8},
+	{XT_KEY_NUMPAD_9, 9},
+};
+
+static inline uint16_t handle_number_entry(XtPhraseEditor *p, XtTrack *t,
+                                           const XtKeys *k)
+{
+	for (uint16_t i = 0; i < ARRAYSIZE(number_lookup); i++)
+	{
+		const XtKeyNumberPairing *m = &number_lookup[i];
+		if (xt_keys_pressed(k, m->key))
+		{
+			XtPhrase *phrase = &t->phrases[xt_track_get_phrase_number_for_frame(t, p->column, p->frame)];
+			XtCell *cell = &phrase->cells[p->row];
+			switch (p->sub_pos)
+			{
+				default:
+					return 0;
+				case CURSOR_SUBPOS_INSTRUMENT_HIGH:
+					cell->inst &= 0x0F;
+					cell->inst |= m->value << 4;
+					return 1;
+				case CURSOR_SUBPOS_INSTRUMENT_LOW:
+					cell->inst &= 0xF0;
+					cell->inst |= m->value;
+					return 1;
+				case CURSOR_SUBPOS_ARG1_HIGH:
+					cell->arg1 &= 0x0F;
+					cell->arg1 |= m->value << 4;
+					return 1;
+				case CURSOR_SUBPOS_ARG1_LOW:
+					cell->arg1 &= 0xF0;
+					cell->arg1 |= m->value;
+					return 1;
+				case CURSOR_SUBPOS_ARG2_HIGH:
+					cell->arg2 &= 0x0F;
+					cell->arg2 |= m->value << 4;
+					return 1;
+				case CURSOR_SUBPOS_ARG2_LOW:
+					cell->arg2 &= 0xF0;
+					cell->arg2 |= m->value;
+					return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+typedef struct XtKeyCommandPairing
+{
+	XtKeyName key;
+	XtCmd value;
+} XtKeyCommandPairing;
+
+static const XtKeyCommandPairing command_lookup[] =
+{
+	{XT_KEY_DEL, '\0'},
+
+	{XT_KEY_0, XT_CMD_TL_OP0},
+	{XT_KEY_1, XT_CMD_TL_OP1},
+	{XT_KEY_2, XT_CMD_TL_OP2},
+	{XT_KEY_3, XT_CMD_TL_OP3},
+
+	{XT_KEY_4, XT_CMD_MULT_OP0},
+	{XT_KEY_5, XT_CMD_MULT_OP1},
+	{XT_KEY_6, XT_CMD_MULT_OP2},
+	{XT_KEY_7, XT_CMD_MULT_OP3},
+
+	{XT_KEY_A, XT_CMD_AMPLITUDE},
+
+	{XT_KEY_B, XT_CMD_BREAK},
+	{XT_KEY_C, XT_CMD_HALT},
+	{XT_KEY_D, XT_CMD_SKIP},
+
+	{XT_KEY_F, XT_CMD_SPEED},
+
+	{XT_KEY_N, XT_CMD_NOISE_EN},
+
+	{XT_KEY_O, XT_CMD_PAN},
+
+	{XT_KEY_P, XT_CMD_TUNE},
+
+	{XT_KEY_T, XT_CMD_TREMOLO},
+	{XT_KEY_V, XT_CMD_VIBRATO},
+	{XT_KEY_G, XT_CMD_TREMOLO_TYPE},
+	{XT_KEY_H, XT_CMD_VIBRATO_TYPE},
+
+	{XT_KEY_Q, XT_CMD_SLIDE_UP},
+	{XT_KEY_R, XT_CMD_SLIDE_DOWN},
+	{XT_KEY_S, XT_CMD_MUTE_DELAY},
+	{XT_KEY_W, XT_CMD_NOTE_DELAY},
+	{XT_KEY_X, XT_CMD_CUT_DELAY},
+};
+
+static inline uint16_t handle_command_entry(XtPhraseEditor *p, XtTrack *t,
+                                            const XtKeys *k)
+{
+	for (uint16_t i = 0; i < ARRAYSIZE(command_lookup); i++)
+	{
+		const XtKeyCommandPairing *m = &command_lookup[i];
+		if (xt_keys_pressed(k, m->key))
+		{
+			XtPhrase *phrase = &t->phrases[xt_track_get_phrase_number_for_frame(t, p->column, p->frame)];
+			XtCell *cell = &phrase->cells[p->row];
+			switch (p->sub_pos)
+			{
+				default:
+					return 0;
+				case CURSOR_SUBPOS_CMD1:
+					cell->cmd1 = m->value;
+					return 1;
+				case CURSOR_SUBPOS_CMD2:
+					cell->cmd2 = m->value;
+					return 1;
+			}
 		}
 	}
 	return 0;
@@ -264,6 +417,33 @@ void xt_phrase_editor_tick(XtPhraseEditor *p, XtTrack *t, const XtKeys *k)
 				{
 					p->channel_dirty[p->column] = 1;
 					cursor_down(p, t);
+				}
+				break;
+			case CURSOR_SUBPOS_INSTRUMENT_HIGH:
+			case CURSOR_SUBPOS_ARG1_HIGH:
+			case CURSOR_SUBPOS_ARG2_HIGH:
+				if (handle_number_entry(p, t, k))
+				{
+					p->channel_dirty[p->column] = 1;
+					cursor_right(p, t);
+				}
+				break;
+			case CURSOR_SUBPOS_INSTRUMENT_LOW:
+			case CURSOR_SUBPOS_ARG1_LOW:
+			case CURSOR_SUBPOS_ARG2_LOW:
+				if (handle_number_entry(p, t, k))
+				{
+					p->channel_dirty[p->column] = 1;
+					cursor_down(p, t);
+					cursor_left(p, t);
+				}
+				break;
+			case CURSOR_SUBPOS_CMD1:
+			case CURSOR_SUBPOS_CMD2:
+				if (handle_command_entry(p, t, k))
+				{
+					p->channel_dirty[p->column] = 1;
+					cursor_right(p, t);
 				}
 				break;
 		}

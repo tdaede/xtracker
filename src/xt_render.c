@@ -165,7 +165,7 @@ static inline void xt_draw_fm_phrase(XtPhrase *phrase, uint16_t x,
 
 void xt_track_renderer_init(XtTrackRenderer *r)
 {
-	memset((void *)r, 0, sizeof(*r));
+	memset(r, 0, sizeof(*r));
 	for (int i = 0; i < ARRAYSIZE(r->last_phrase_num); i++)
 	{
 		r->last_phrase_num[i] = 0xFFFF;
