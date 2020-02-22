@@ -3,7 +3,7 @@ OUT_EXEC := xt
 
 CC := m68k-linux-gnu-gcc
 OBJCOPY := human68k-objcopy
-CFLAGS := -std=c99 -O2 -fshort-enums -fomit-frame-pointer -Wall -I$(HUMAN68K)/human68k/include -Isrc -nostdlib -flto
+CFLAGS := -std=c99 -O2 -fshort-enums -fomit-frame-pointer -Wall -I$(HUMAN68K)/human68k/include -Isrc -nostdlib -flto -mcpu=68000
 LDFLAGS :=  $(HUMAN68K)/human68k/lib/crt0.o -Wl,-q,-Map=$(OUT_EXEC).map,-T/home/thomas/sandbox/test-x68k/human68kxfile.x,-L$(HUMAN68K)/human68k/lib,-lc,-liocs,-ldos,-lgcc
 
 OBJECTS := $(SOURCES:.c=.o)
